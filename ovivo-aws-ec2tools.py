@@ -2,11 +2,20 @@
 
 """ Python script that uses the boto EC2 libraries for sysadmin operations 
     in Ovivo's Amazon EC2 Infrastructure.
+
+    Oskar Kossuth (c) 2013
     """
 
 REGION="eu-west-1"
-AWSAKEY=""
-AWSSKEY=""
+AWSAKEY="AKIA"
+AWSSKEY="CrS7F"
+
+
+BACKEND_EIP="54.247.108.93"
+CELERY_EIP="46.137.79.20"
+MQREDIS_EIP="54.246.99.180"
+DBMASTER_EIP="54.247.108.126"
+
 
 import boto.ec2
 
@@ -23,7 +32,7 @@ try:
 except ImportError:
     ensure_the_library_is_installed('argh')
 
-
+# Lists all the Instances in the Amazon account
 def list():
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
@@ -31,6 +40,7 @@ def list():
         instance = i.instances[0]
 	print "Instance %s , Type: %s , Name: %s , State: %s \n" % (i.instances,instance.instance_type,instance.tags['Name'], instance.state) 
 
+# Stops a particular Amazon Instance
 @arg('--instanceid',help='Instance ID of the instance to stop',)
 
 def stop(args):
@@ -48,6 +58,7 @@ def stop(args):
     else:
         print "running"
 
+# Starts a particular Amazon Instance
 @arg('--instanceid',help='Instance ID of the instance to start',)
 
 def start(args):
@@ -65,6 +76,7 @@ def start(args):
     else:
 	print "Error"
 
+# List all Elastic IPs added to the AWS Account
 def getalleip():
     
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -80,6 +92,7 @@ def getalleip():
         else:
             print "IP: %s ---> Not associated to any Instance " % (i)
 
+# Associate an elastic IP address to a particular Instance
 @arg('--instanceid',help='Instance ID of the instance to add EIP',)
 @arg('--eip',help='EIP to add',)
 
@@ -92,25 +105,184 @@ def addeip(args):
     print "EIP %s added succesfully to Instance %s \n" % (args.eip, iname)
 
 
+# Disassociate an elastic IP address from a particular Instance
+@arg('--instanceid',help='Instance ID of the instance to disassociate EIP',)
+@arg('--eip',help='EIP to disassociate',)
+
+def diseip(args):
+
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    icod = conn.get_all_instances(args.instanceid)
+    iname = icod[0].instances[0].tags['Name']
+    conn.disassociate_address(args.eip,args.instanceid)
+    print "EIP %s disassociated succesfully from Instance %s \n" % (args.eip, iname)
+
+# Stops the Ovivo Production Infrastructure automatically stopping each instance in order
+def stopinfr(args):
+
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    ids = conn.get_all_instances()
+    for i in ids:
+        instance = i.instances[0]
+	print instance
+	if instance.tags['Name'] == "Production Celery":
+	    celery_id = instance
+        elif instance.tags['Name'] == "Production Backend":
+ 	    backend_id = instance
+        elif instance.tags['Name'] == "Production MQRedis":
+	    mqredis_id = instance
+	elif instance.tags['Name'] == "Production DB Master":
+            dbmaster_id = instance
+	elif instance.tags['Name'] == "Ovivo Updates":
+            oupdates_id = instance
+	else:
+	    pass
+
+    print "Starting Ovivo Updates Instance..."
+    conn.start_instances(instance_ids=[oupdates_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
+    state = reservations[0].instances[0].state
+    while state !="running":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
+	state = reservations[0].instances[0].state
+    conn.disassociate_address(BACKEND_EIP,backend_id)
+    print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Production Backend")
+    conn.associate_address(oupdates_id, BACKEND_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
+    print "Ovivo Updates Instance is running"
+    
+    print
+    print "Stopping Ovivo AWS Infrastructure..."
+    print
+    print "Stopping Production Celery instance..."
+    conn.stop_instances(instance_ids=[celery_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
+    state = reservations[0].instances[0].state
+    while state !="stopped":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
+	state = reservations[0].instances[0].state
+    print "Production Celery instance stopped"
+    print
+    print "Stopping Production Backend instance..."
+    conn.stop_instances(instance_ids=[backend_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
+    state = reservations[0].instances[0].state
+    while state !="stopped":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
+	state = reservations[0].instances[0].state
+    print "Production Backend instance stopped"
+    print
+    print "Stopping Production MQRedis instance..."
+    conn.stop_instances(instance_ids=[mqredis_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
+    state = reservations[0].instances[0].state
+    while state !="stopped":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
+	state = reservations[0].instances[0].state
+    print "Production MQRedis instance stopped"
+    print
+    print "Stopping Production DB Master instance..."
+    conn.stop_instances(instance_ids=[dbmaster_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
+    state = reservations[0].instances[0].state
+    while state !="stopped":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
+	state = reservations[0].instances[0].state
+    print "Production DB Master instance stopped"
+    print
+    print "Ovivo AWS Infrastructure stopped"
+
+
+
+# Starts the Ovivo Production Infrastructure automatically launching each instance in order
+def startinfr(args):
+
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    ids = conn.get_all_instances()
+    for i in ids:
+        instance = i.instances[0]
+	print instance
+	if instance.tags['Name'] == "Production Celery":
+	    celery_id = instance
+        elif instance.tags['Name'] == "Production Backend":
+ 	    backend_id = instance
+        elif instance.tags['Name'] == "Production MQRedis":
+	    mqredis_id = instance
+	elif instance.tags['Name'] == "Production DB Master":
+            dbmaster_id = instance
+	elif instance.tags['Name'] == "Ovivo Updates":
+            oupdates_id = instance
+	else:
+	    pass
+
+    print "Starting Ovivo AWS Infrastructure..."
+    print
+    print "Starting Production DB Master instance..."
+    conn.start_instances(instance_ids=[dbmaster_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
+    state = reservations[0].instances[0].state
+    while state !="running":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
+	state = reservations[0].instances[0].state
+    conn.associate_address(dbmaster_id, DBMASTER_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (DBMASTER_EIP, "Production DB Master")
+    print "Production DB Master instance running"
+    print
+    
+    print "Starting Production MQRedis instance..."
+    conn.start_instances(instance_ids=[mqredis_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
+    state = reservations[0].instances[0].state
+    while state !="running":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
+	state = reservations[0].instances[0].state
+    conn.associate_address(mqredis_id, MQREDIS_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (MQREDIS_EIP, "Production MQRedis")
+    print "Production MQRedis instance running"
+    print
+    
+    print "Starting Production Backend instance..."
+    conn.start_instances(instance_ids=[backend_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
+    state = reservations[0].instances[0].state
+    while state !="running":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
+	state = reservations[0].instances[0].state
+    conn.disassociate_address(BACKEND_EIP,oupdates_id)
+    print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
+    conn.associate_address(backend_id, BACKEND_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
+    print "Production Backend instance running"
+    print
+    
+    print "Starting Production Celery instance..."
+    conn.start_instances(instance_ids=[celery_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
+    state = reservations[0].instances[0].state
+    while state !="running":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
+	state = reservations[0].instances[0].state
+    conn.associate_address(celery_id, CELERY_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (CELERY_EIP, "Production Celery")
+    print "Production Celery instance running"
+    
+    print "Stopping Ovivo Updates instance..."
+    conn.stop_instances(instance_ids=[oupdates_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
+    state = reservations[0].instances[0].state
+    while state !="stopped":
+        reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
+	state = reservations[0].instances[0].state
+    print "Ovivo Updates instance stopped"
+    print
+    print "Ovivo AWS Infrastructure started"
+    
+    
+
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([start,stop,list,getalleip,addeip])
+    p.add_commands([start,stop,list,getalleip,addeip,diseip,stopinfr,startinfr])
     p.dispatch()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
