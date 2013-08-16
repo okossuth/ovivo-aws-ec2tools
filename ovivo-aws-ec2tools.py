@@ -7,18 +7,19 @@
     """
 
 REGION="eu-west-1"
-AWSAKEY="AKIA"
-AWSSKEY="CrS7F"
+AWSAKEY="AVKA"
+AWSSKEY="C7F"
 
 
 BACKEND_EIP="54.247.108.93"
 CELERY_EIP="46.137.79.20"
 MQREDIS_EIP="54.246.99.180"
 DBMASTER_EIP="54.247.108.126"
+OUPDATES_EIP="46.137.85.58"
 
 
 import boto.ec2
-
+import socket
 
 def ensure_the_library_is_installed(name):
 	    print 'You have to install the python library "%s" in order to use ' \
@@ -32,13 +33,22 @@ try:
 except ImportError:
     ensure_the_library_is_installed('argh')
 
+def check_socket(address,port):
+    s = socket.socket()
+    try:
+        s.connect((address,port))
+	return True
+    except socket.error, e:
+        print "Connection to address %s failed.. retrying \n" % address
+	return False
+
 # Lists all the Instances in the Amazon account
 def list():
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
     for i in reservations:
         instance = i.instances[0]
-	print "Instance %s , Type: %s , Name: %s , State: %s \n" % (i.instances,instance.instance_type,instance.tags['Name'], instance.state) 
+	print "Instance %s , Type: %s , Name: %s , State: %s \n" % (instance.id,instance.instance_type,instance.tags['Name'], instance.state) 
 
 # Stops a particular Amazon Instance
 @arg('--instanceid',help='Instance ID of the instance to stop',)
@@ -47,11 +57,11 @@ def stop(args):
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "Stopping instance..."
     conn.stop_instances(instance_ids=[args.instanceid])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Redirect_Updates"});
+    reservations = conn.get_all_instances(args.instanceid)
     state = reservations[0].instances[0].state
     while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Redirect_Updates"});
-        state = reservations[0].instances[0].state
+        reservations = conn.get_all_instances(args.instanceid)
+	state = reservations[0].instances[0].state
 	
     if state=="stopped":
 	print "Instance stopped, checks: %s" % reservations[0].instances[0].monitoring_state
@@ -66,11 +76,11 @@ def start(args):
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "Starting instance..."
     conn.start_instances(instance_ids=[args.instanceid])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Redirect_Updates"});
+    reservations = conn.get_all_instances(args.instanceid)
     state = reservations[0].instances[0].state
     while state !="running":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Redirect_Updates"});
-        state = reservations[0].instances[0].state
+        reservations = conn.get_all_instances(args.instanceid)
+	state = reservations[0].instances[0].state
     if state == "running":
 	print "Instance running, checks: %s" % reservations[0].instances[0].monitoring_state
     else:
@@ -123,17 +133,17 @@ def stopinfr(args):
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     ids = conn.get_all_instances()
     for i in ids:
-        instance = i.instances[0]
-	print instance
-	if instance.tags['Name'] == "Production Celery":
+        codinstance = i.instances[0]
+	instance = codinstance.id
+	if codinstance.tags['Name'] == "Production Celery":
 	    celery_id = instance
-        elif instance.tags['Name'] == "Production Backend":
+        elif codinstance.tags['Name'] == "Production Backend":
  	    backend_id = instance
-        elif instance.tags['Name'] == "Production MQRedis":
+        elif codinstance.tags['Name'] == "Production MQRedis":
 	    mqredis_id = instance
-	elif instance.tags['Name'] == "Production DB Master":
+	elif codinstance.tags['Name'] == "Production DB Master":
             dbmaster_id = instance
-	elif instance.tags['Name'] == "Ovivo Updates":
+	elif codinstance.tags['Name'] == "Ovivo Updates":
             oupdates_id = instance
 	else:
 	    pass
@@ -145,11 +155,21 @@ def stopinfr(args):
     while state !="running":
         reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
 	state = reservations[0].instances[0].state
+
+    print "Ovivo Updates Instance is running"
+    conn.associate_address(oupdates_id, OUPDATES_EIP)
+    print "Checking if Ovivo Updates is ready for connections..."
+    val = check_socket(OUPDATES_EIP, 80)
+    while val!= True:
+        val = check_socket(OUPDATES_EIP, 80)
+    
+    print "Connected to Ovivo Updates address %s on port %s \n" % (OUPDATES_EIP,"80")
+    conn.disassociate_address(OUPDATES_EIP,oupdates_id)
     conn.disassociate_address(BACKEND_EIP,backend_id)
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Production Backend")
     conn.associate_address(oupdates_id, BACKEND_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
-    print "Ovivo Updates Instance is running"
+    print "Ovivo Updates is now showing maintenance message..."
     
     print
     print "Stopping Ovivo AWS Infrastructure..."
@@ -193,24 +213,23 @@ def stopinfr(args):
     print "Ovivo AWS Infrastructure stopped"
 
 
-
 # Starts the Ovivo Production Infrastructure automatically launching each instance in order
 def startinfr(args):
 
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     ids = conn.get_all_instances()
     for i in ids:
-        instance = i.instances[0]
-	print instance
-	if instance.tags['Name'] == "Production Celery":
+        codinstance = i.instances[0]
+	instance = codinstance.id
+	if codinstance.tags['Name'] == "Production Celery":
 	    celery_id = instance
-        elif instance.tags['Name'] == "Production Backend":
+        elif codinstance.tags['Name'] == "Production Backend":
  	    backend_id = instance
-        elif instance.tags['Name'] == "Production MQRedis":
+        elif codinstance.tags['Name'] == "Production MQRedis":
 	    mqredis_id = instance
-	elif instance.tags['Name'] == "Production DB Master":
+	elif codinstance.tags['Name'] == "Production DB Master":
             dbmaster_id = instance
-	elif instance.tags['Name'] == "Ovivo Updates":
+	elif codinstance.tags['Name'] == "Ovivo Updates":
             oupdates_id = instance
 	else:
 	    pass
@@ -265,6 +284,7 @@ def startinfr(args):
     conn.associate_address(celery_id, CELERY_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (CELERY_EIP, "Production Celery")
     print "Production Celery instance running"
+    print "Ovivo AWS Infrastructure started"
     
     print "Stopping Ovivo Updates instance..."
     conn.stop_instances(instance_ids=[oupdates_id])
@@ -275,8 +295,12 @@ def startinfr(args):
 	state = reservations[0].instances[0].state
     print "Ovivo Updates instance stopped"
     print
-    print "Ovivo AWS Infrastructure started"
-    
+    print "Ovivo AWS Ella Application should be online soon.."
+    val = check_socket(BACKEND_EIP, 80)
+    while val!= True:
+        val = check_socket(BACKEND_EIP, 80)
+    print "Ovivo AWS Ella Application online!"
+    print "Operation completed succesfully"
     
 
 if __name__ == '__main__':
