@@ -7,8 +7,6 @@
     """
 
 REGION="eu-west-1"
-AWSAKEY="AKIAILIDU2ITK7ZVNVKA"
-AWSSKEY="Cr9WQs1nVPoDmIdh/SDl+6sskZhrLvZWo4yYIS7F"
 
 
 BACKEND_EIP="54.247.108.93"
@@ -33,6 +31,23 @@ try:
 except ImportError:
     ensure_the_library_is_installed('argh')
 
+def _getcreds():
+    creds = []
+    f = open("./awscreds.txt", "r")
+    c = f.readlines()
+    f.seek(0)
+    aws_akey = c[0]
+    aws_skey = c[1]
+    for i in range(len(aws_akey)):
+        if aws_akey[i] == "=":
+	    pos = i
+    for i in range(len(aws_skey)):
+	if aws_skey[i] == "=":
+            pos = i
+    creds.append(aws_akey[pos+2:-2])
+    creds.append(aws_skey[pos+2:-2])
+    return tuple(creds)
+
 def check_socket(address,port):
     s = socket.socket()
     try:
@@ -44,6 +59,7 @@ def check_socket(address,port):
 
 # Lists all the Instances in the Amazon account
 def list():
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
     for i in reservations:
@@ -54,6 +70,7 @@ def list():
 @arg('--instanceid',help='Instance ID of the instance to stop',)
 
 def stop(args):
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "Stopping instance..."
     conn.stop_instances(instance_ids=[args.instanceid])
@@ -73,6 +90,7 @@ def stop(args):
 
 def start(args):
 
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "Starting instance..."
     conn.start_instances(instance_ids=[args.instanceid])
@@ -89,6 +107,7 @@ def start(args):
 # List all Elastic IPs added to the AWS Account
 def getalleip():
     
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     eips = conn.get_all_addresses()
     for i in eips:
@@ -108,6 +127,7 @@ def getalleip():
 
 def addeip(args):
 
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     icod = conn.get_all_instances(args.instanceid)
     iname = icod[0].instances[0].tags['Name']
@@ -121,6 +141,7 @@ def addeip(args):
 
 def diseip(args):
 
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     icod = conn.get_all_instances(args.instanceid)
     iname = icod[0].instances[0].tags['Name']
@@ -130,6 +151,7 @@ def diseip(args):
 # Stops the Ovivo Production Infrastructure automatically stopping each instance in order
 def stopinfr(args):
 
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     ids = conn.get_all_instances()
     for i in ids:
@@ -216,6 +238,7 @@ def stopinfr(args):
 # Starts the Ovivo Production Infrastructure automatically launching each instance in order
 def startinfr(args):
 
+    AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     ids = conn.get_all_instances()
     for i in ids:
