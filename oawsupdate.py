@@ -11,13 +11,14 @@
     After these customizations, to use the script type:
     fab oawsupdate   
 """
-
+import fabric
 from fabric.api import env, roles, cd, run, sudo, prompt, task, local, put, hide, get
 import time
 import boto.ec2
 
 REGION="eu-west-1"
 VPCID="sg-cb6764bf"
+
 
 class color:
     PURPLE = '\033[95m'
@@ -88,6 +89,7 @@ env.user = 'oskar'
 env.hosts = _gethosts()
 #env.key_filename = '/path/to/awskey.pem' ---> DONT FORGET TO ENABLE THIS
 env.warn_only = True
+fabric.state.output['running'] = False
 
 def oawsupdate():
     with hide('warnings'):
@@ -112,5 +114,40 @@ def oawsupdate():
 		print "Wrong answer, continuing with the next instance..."
 	print "----------------------------------------------"
 	print ""
+
+def health(*name):
+    #with hide('running','output','warnings'):
+    with hide('everything'):
+        AWSAKEY,AWSSKEY = _getcreds()
+        conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+        if not name:
+            reservations = conn.get_all_instances()
+        else:
+	    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % name})
+        for i in reservations:
+            instance = i.instances[0]
+	    if instance.tags['Name'] == dnsdict[env.host_string] :
+	        print "----------------------------------------------------------------------------------"
+    	        print(color.BOLD + color.YELLOW + dnsdict[env.host_string] + " health status" + color.END)
+	        print "Instance state: %s " % instance.state
+                print "Instance ID: %s " % instance.id
+	        print "Instance Type: %s " % instance.instance_type
+                status = run('uptime')
+	        print (color.GREEN + "Instance Uptime" +color.END)
+		print status
+		print
+		status = run('df -h')
+		print (color.GREEN + "Instance Disk Space" +color.END)
+		print status
+		print
+		status = run('free -m')
+		print (color.GREEN + "Instance Memory Usage" +color.END)
+		print status
+		print
+		print "----------------------------------------------------------------------------------"
+	        print ""
+	    else:
+                pass
+
 
 
