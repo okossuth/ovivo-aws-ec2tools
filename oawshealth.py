@@ -2,7 +2,13 @@
 
 """ Script to check Health of Amazon EC2 instances
     Oskar Kossuth (c)2013
-   
+
+    The file awscreds.txt is stored in the same directory as the script.
+        the contents of this file should be:
+	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Access Key
+	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Secret Key
+	AWSKEYPEM='/path/to/awskey.pem'         -> your Amazon Key PEM
+
     To use the script type:
     oawshealth  or oawshealth "Name of Instance" 
 """
@@ -45,12 +51,6 @@ dnsdict = {}
 
 
 def _getcreds():
-    """ The file awscreds.txt is stored in the same directory as the script.
-        the contents of this file should be:
-	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Access Key
-	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Secret Key
-	AWSKEYPEM='/path/to/awskey.pem'         -> your Amazon Key PEM
-	"""
     creds = []
     f = open(AWSCREDS, "r")
     c = f.readlines()
