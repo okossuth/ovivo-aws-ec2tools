@@ -3,22 +3,25 @@
 """ Script to check and update system software on Amazon EC2 instances
     Oskar Kossuth (c)2013
     
-    Dont forget to add the path to your key.pem
-    env.key_filename = '/path/to/awskey.pem'
-    
-    Also create a file .fabricrc in your $HOME with this content:
-    fabfile = oawsupdate.py
+    The file awscreds.txt is stored in the same directory as this script.
+        the contents of the file should be:
+	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Access Key
+	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Secret Key
+	AWSKEYPEM='/path/to/awskey.pem'         -> your Amazon Key PEM
+	
     After these customizations, to use the script type:
-    fab oawsupdate   
+    ./oawsupdate  or ./oawsupdate "Name of Amazon instance" 
 """
 import fabric
 from fabric.api import env, roles, cd, run, sudo, prompt, task, local, put, hide, get
+from fabric.main import main
+import sys
 import time
 import boto.ec2
 
 REGION="eu-west-1"
 VPCID="sg-cb6764bf"
-
+AWSCREDS="./awscreds.txt"
 
 class color:
     PURPLE = '\033[95m'
@@ -47,13 +50,8 @@ dnsdict = {}
 
 
 def _getcreds():
-    """ The file awscreds.txt is stored in the same directory as the script.
-        the contents of this file should be:
-	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Access Key
-	AWSAKEY='xxxxxxxxxxxxxxxxxxxxxxx'       -> your Amazon Secret Key
-	"""
     creds = []
-    f = open("./awscreds.txt", "r")
+    f = open(AWSCREDS, "r")
     c = f.readlines()
     f.seek(0)
     aws_akey = c[0]
@@ -68,11 +66,26 @@ def _getcreds():
     creds.append(aws_skey[pos+2:-2])
     return tuple(creds)
 
-def _gethosts():
+def _getkeypem():
+    f = open(AWSCREDS, "r")
+    c = f.readlines()
+    f.seek(0)
+    aws_keypem = c[2]
+    for i in range(len(aws_keypem)):
+        if aws_keypem[i] == "=":
+	    pos = i
+    return aws_keypem[pos+2:-2]
+
+
+def _gethosts(*name):
     array_inst=[]
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    reservations = conn.get_all_instances()
+    if len(name[0]) < 1:
+        reservations = conn.get_all_instances()
+    else:
+        val = str(name[0])
+	reservations = conn.get_all_instances(filters={"tag:Name": "%s" % val[2:-2]})
     for i in reservations:
         instance = i.instances[0]
 	id_instance = instance.id
@@ -85,11 +98,6 @@ def _gethosts():
     return tuple(array_inst)
 
 
-env.user = 'oskar'
-env.hosts = _gethosts()
-#env.key_filename = '/path/to/awskey.pem' ---> DONT FORGET TO ENABLE THIS
-env.warn_only = True
-fabric.state.output['running'] = False
 
 def oawsupdate():
     with hide('warnings'):
@@ -115,39 +123,14 @@ def oawsupdate():
 	print "----------------------------------------------"
 	print ""
 
-def health(*name):
-    #with hide('running','output','warnings'):
-    with hide('everything'):
-        AWSAKEY,AWSSKEY = _getcreds()
-        conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-        if not name:
-            reservations = conn.get_all_instances()
-        else:
-	    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % name})
-        for i in reservations:
-            instance = i.instances[0]
-	    if instance.tags['Name'] == dnsdict[env.host_string] :
-	        print "----------------------------------------------------------------------------------"
-    	        print(color.BOLD + color.YELLOW + dnsdict[env.host_string] + " health status" + color.END)
-	        print "Instance state: %s " % instance.state
-                print "Instance ID: %s " % instance.id
-	        print "Instance Type: %s " % instance.instance_type
-                status = run('uptime')
-	        print (color.GREEN + "Instance Uptime" +color.END)
-		print status
-		print
-		status = run('df -h')
-		print (color.GREEN + "Instance Disk Space" +color.END)
-		print status
-		print
-		status = run('free -m')
-		print (color.GREEN + "Instance Memory Usage" +color.END)
-		print status
-		print
-		print "----------------------------------------------------------------------------------"
-	        print ""
-	    else:
-                pass
 
-
-
+if __name__ == '__main__':
+    sys.argv = ['fab', '-f', __file__, ] + sys.argv[1:]
+    env.hosts = _gethosts(sys.argv[3:])
+    env.user = 'oskar'
+    env.key_filename = _getkeypem() 
+    env.warn_only = True
+    fabric.state.output['running'] = False
+    for i in env.hosts:
+        env.host_string = i
+	oawsupdate()
