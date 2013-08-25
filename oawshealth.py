@@ -104,15 +104,14 @@ def health(*name):
     with hide('everything'):
         AWSAKEY,AWSSKEY = _getcreds()
         conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-        if len(name) <= 1:
-            reservations = conn.get_all_instances()
+        if len(name[0]) < 1:
+	    val = "''" + dnsdict[env.host_string] + "''"
         else:
 	    val = str(name[0])
-	    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % val[2:-2]})
+	reservations = conn.get_all_instances(filters={"tag:Name": "%s" % val[2:-2]})
+	print reservations
         for i in reservations:
             instance = i.instances[0]
-	    if len(name) <= 1:
-		val = "''" + dnsdict[env.host_string] + "''"
 	    if instance.tags['Name'] == "%s" % val[2:-2] :
 	        print "----------------------------------------------------------------------------------"
 	        print(color.BOLD + color.YELLOW + val[2:-2] + " health status" + color.END)
