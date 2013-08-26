@@ -86,6 +86,7 @@ def stop(args):
 
 # Starts a particular Amazon Instance
 @arg('--instanceid',help='Instance ID of the instance to start',)
+@arg('--eip',help='EIP to add',)
 
 def start(args):
 
@@ -102,6 +103,8 @@ def start(args):
 	print "Instance running, checks: %s" % reservations[0].instances[0].monitoring_state
     else:
 	print "Error"
+    conn.associate_address(args.instanceid, args.eip)
+    
 
 # List all Elastic IPs added to the AWS Account
 def getalleip():
@@ -267,6 +270,9 @@ def startinfr(args):
 	state = reservations[0].instances[0].state
     conn.associate_address(dbmaster_id, DBMASTER_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (DBMASTER_EIP, "Production DB Master")
+    val = check_socket(DBMASTER_EIP, 22)
+    while val!= True:
+        val = check_socket(DBMASTER_EIP, 22)
     print "Production DB Master instance running"
     print
     
@@ -279,6 +285,9 @@ def startinfr(args):
 	state = reservations[0].instances[0].state
     conn.associate_address(mqredis_id, MQREDIS_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (MQREDIS_EIP, "Production MQRedis")
+    val = check_socket(MQREDIS_EIP, 55672)
+    while val!= True:
+        val = check_socket(MQREDIS_EIP, 55672)
     print "Production MQRedis instance running"
     print
     
@@ -293,6 +302,9 @@ def startinfr(args):
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
     conn.associate_address(backend_id, BACKEND_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
+    val = check_socket(BACKEND_EIP, 80)
+    while val!= True:
+        val = check_socket(BACKEND_EIP, 80)
     print "Production Backend instance running"
     print
     
@@ -306,7 +318,10 @@ def startinfr(args):
     conn.associate_address(celery_id, CELERY_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (CELERY_EIP, "Production Celery")
     print "Production Celery instance running"
-    print "Ovivo AWS Infrastructure started"
+    val = check_socket(CELERY_EIP, 80)
+    while val!= True:
+        val = check_socket(CELERY_EIP, 80)
+    #print "Ovivo AWS Infrastructure started"
     
     print "Stopping Ovivo Updates instance..."
     conn.stop_instances(instance_ids=[oupdates_id])
@@ -317,10 +332,10 @@ def startinfr(args):
 	state = reservations[0].instances[0].state
     print "Ovivo Updates instance stopped"
     print
-    print "Ovivo AWS Ella Application should be online soon.."
-    val = check_socket(BACKEND_EIP, 80)
-    while val!= True:
-        val = check_socket(BACKEND_EIP, 80)
+    #print "Ovivo AWS Ella Application should be online soon.."
+    #val = check_socket(BACKEND_EIP, 80)
+    #while val!= True:
+    #    val = check_socket(BACKEND_EIP, 80)
     print "Ovivo AWS Ella Application online!"
     print "Operation completed succesfully"
     
