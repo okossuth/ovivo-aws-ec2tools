@@ -21,7 +21,9 @@ import sys
 
 
 REGION="eu-west-1"
-VPCID="sg-cb6764bf"
+#REGION="us-east-1"
+VPCID_EUWEST="sg-cb6764bf"
+VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
 
 class color:
@@ -48,7 +50,6 @@ except ImportError:
     check_library('fabric')
 
 dnsdict = {}
-
 
 def _getcreds():
     creds = []
@@ -92,9 +93,15 @@ def _gethosts(*name):
 	ip_instance = instance.ip_address
 	sec_instance = instance.groups[0]
 	iname = instance.tags['Name']
-	if ip_instance is not None and sec_instance.id==VPCID:
+	if ip_instance is not None and (sec_instance.id==VPCID_EUWEST or sec_instance.id==VPCID_USEAST):
 	     array_inst.append(ip_instance)
              dnsdict[ip_instance] = iname
+	     
+	else:
+	    if ip_instance is None and (sec_instance.id==VPCID_EUWEST or sec_instance.id==VPCID_USEAST):
+	         array_inst.append(iname)
+                 dnsdict[iname] = iname
+                 
     return tuple(array_inst)
 
 def snapshot(*name):
@@ -110,7 +117,20 @@ def snapshot(*name):
         instance = i.instances[0]
 	print instance.id
         volumes = conn.get_all_volumes(filters={'attachment.instance-id': instance.id})
-        print volumes
+	print str(volumes[0])[7:]
+	#print "Freezing filesytem..."
+	#run('sudo fsfreeze -f / && sleep 30 && fsfreeze -u /')
+	if instance.state == "running":
+	    run('sync')
+        else:
+	    print "Ovivo is stopped or IPs not available"
+	    pass
+        print instance.tags['Name']
+	print "Creating snapshot..."
+	snapshot = conn.create_snapshot(str(volumes[0])[7:], val[2:-2])
+	#print "Thawing filesystem..."
+        #run('sudo fsfreeze -u /')
+        print "Snapshot %s created!" % snapshot
 
 
 if __name__ == '__main__':
