@@ -11,6 +11,7 @@ import socket
 
 
 REGION="eu-west-1"
+#REGION="us-east-1"
 BACKEND_EIP="54.247.108.93"
 CELERY_EIP="46.137.79.20"
 MQREDIS_EIP="54.246.99.180"
@@ -66,17 +67,20 @@ def list():
 	print "Instance %s , Type: %s , Name: %s , State: %s \n" % (instance.id,instance.instance_type,instance.tags['Name'], instance.state) 
 
 # Stops a particular Amazon Instance
-@arg('--instanceid',help='Instance ID of the instance to stop',)
+@arg('--instance',help='Instance ID of the instance to stop',)
 
 def stop(args):
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "Stopping instance..."
-    conn.stop_instances(instance_ids=[args.instanceid])
-    reservations = conn.get_all_instances(args.instanceid)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    for i in reservations:
+        instance = i.instances[0]
+    if instance.tags['Name'] == "%s" % args.instance :
+        conn.stop_instances(instance_ids=[instance.id])
     state = reservations[0].instances[0].state
     while state !="stopped":
-        reservations = conn.get_all_instances(args.instanceid)
+        reservations = conn.get_all_instances(instance.id)
 	state = reservations[0].instances[0].state
 	
     if state=="stopped":
@@ -85,25 +89,28 @@ def stop(args):
         print "running"
 
 # Starts a particular Amazon Instance
-@arg('--instanceid',help='Instance ID of the instance to start',)
-@arg('--eip',help='EIP to add',)
+@arg('--instance',help='Instance ID of the instance to start',)
+#@arg('--eip',help='EIP to add',)
 
 def start(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "Starting instance..."
-    conn.start_instances(instance_ids=[args.instanceid])
-    reservations = conn.get_all_instances(args.instanceid)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    for i in reservations:
+        instance = i.instances[0]
+    if instance.tags['Name'] == "%s" % args.instance :
+        conn.start_instances(instance_ids=[instance.id])
     state = reservations[0].instances[0].state
     while state !="running":
-        reservations = conn.get_all_instances(args.instanceid)
+        reservations = conn.get_all_instances(instance.id)
 	state = reservations[0].instances[0].state
     if state == "running":
 	print "Instance running, checks: %s" % reservations[0].instances[0].monitoring_state
     else:
 	print "Error"
-    conn.associate_address(args.instanceid, args.eip)
+   # conn.associate_address(args.instanceid, args.eip)
     
 
 # List all Elastic IPs added to the AWS Account
@@ -124,31 +131,39 @@ def getalleip():
             print "IP: %s ---> Not associated to any Instance " % (i)
 
 # Associate an elastic IP address to a particular Instance
-@arg('--instanceid',help='Instance ID of the instance to add EIP',)
+@arg('--instance',help='Instance ID of the instance to add EIP',)
 @arg('--eip',help='EIP to add',)
 
 def addeip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    icod = conn.get_all_instances(args.instanceid)
-    iname = icod[0].instances[0].tags['Name']
-    conn.associate_address(args.instanceid, args.eip)
-    print "EIP %s added succesfully to Instance %s \n" % (args.eip, iname)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    for i in reservations:
+        instance = i.instances[0]
+    if instance.tags['Name'] == "%s" % args.instance :
+        icod = conn.get_all_instances(instance.id)
+        iname = icod[0].instances[0].tags['Name']
+        conn.associate_address(instance.id, args.eip)
+        print "EIP %s added succesfully to Instance %s \n" % (args.eip, iname)
 
 
 # Disassociate an elastic IP address from a particular Instance
-@arg('--instanceid',help='Instance ID of the instance to disassociate EIP',)
+@arg('--instance',help='Instance ID of the instance to disassociate EIP',)
 @arg('--eip',help='EIP to disassociate',)
 
 def diseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    icod = conn.get_all_instances(args.instanceid)
-    iname = icod[0].instances[0].tags['Name']
-    conn.disassociate_address(args.eip,args.instanceid)
-    print "EIP %s disassociated succesfully from Instance %s \n" % (args.eip, iname)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    for i in reservations:
+        instance = i.instances[0]
+    if instance.tags['Name'] == "%s" % args.instance :
+        icod = conn.get_all_instances(instance.id)
+        iname = icod[0].instances[0].tags['Name']
+        conn.disassociate_address(args.eip,instance.id)
+        print "EIP %s disassociated succesfully from Instance %s \n" % (args.eip, iname)
 
 # Stops the Ovivo Production Infrastructure automatically stopping each instance in order
 def stopinfr(args):
