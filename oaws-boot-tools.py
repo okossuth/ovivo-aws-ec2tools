@@ -4,6 +4,17 @@
     in Ovivo's Amazon EC2 Infrastructure.
 
     Oskar Kossuth (c) 2013
+
+    Operations supported:
+    - List all running instances  (list)
+    - Stop a running instance     (stop)
+    - Start a stopped instance    (start)
+    - Get all elastic IPs associated to instances   (getalleip)
+    - Associate elastic IP to running instance      (asseip)
+    - Disassociate elastic IP from running instance (diseip) 
+    - Stop Ovivo's Production Instances in order    (stopinfr)
+    - Start Ovivo's Production Instances in order   (startinfr)
+    
     """
 
 import boto.ec2
@@ -16,7 +27,6 @@ BACKEND_EIP="54.247.108.93"
 CELERY_EIP="46.137.79.20"
 MQREDIS_EIP="54.246.99.180"
 DBMASTER_EIP="54.247.108.126"
-OUPDATES_EIP="46.137.85.58"
 AWSCREDS="./awscreds.txt"
 
 def ensure_the_library_is_installed(name):
@@ -90,7 +100,7 @@ def stop(args):
 
 # Starts a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to start',)
-#@arg('--eip',help='EIP to add',)
+@arg('--eip',help='EIP to add',)
 
 def start(args):
 
@@ -110,7 +120,8 @@ def start(args):
 	print "Instance running, checks: %s" % reservations[0].instances[0].monitoring_state
     else:
 	print "Error"
-   # conn.associate_address(args.instanceid, args.eip)
+    if args.eip is not None:
+        conn.associate_address(args.instance, args.eip)
     
 
 # List all Elastic IPs added to the AWS Account
@@ -134,7 +145,7 @@ def getalleip():
 @arg('--instance',help='Instance ID of the instance to add EIP',)
 @arg('--eip',help='EIP to add',)
 
-def addeip(args):
+def asseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -144,6 +155,9 @@ def addeip(args):
     if instance.tags['Name'] == "%s" % args.instance :
         icod = conn.get_all_instances(instance.id)
         iname = icod[0].instances[0].tags['Name']
+	if args.eip is None:
+	    args.eip = conn.allocate_address()
+        print args.eip
         conn.associate_address(instance.id, args.eip)
         print "EIP %s added succesfully to Instance %s \n" % (args.eip, iname)
 
@@ -162,6 +176,8 @@ def diseip(args):
     if instance.tags['Name'] == "%s" % args.instance :
         icod = conn.get_all_instances(instance.id)
         iname = icod[0].instances[0].tags['Name']
+	if args.eip is None:
+	    args.eip = instance.ip_address	
         conn.disassociate_address(args.eip,instance.id)
         print "EIP %s disassociated succesfully from Instance %s \n" % (args.eip, iname)
 
@@ -196,6 +212,7 @@ def stopinfr(args):
 	state = reservations[0].instances[0].state
 
     print "Ovivo Updates Instance is running"
+    OUPDATES_EIP = conn.allocate_address()
     conn.associate_address(oupdates_id, OUPDATES_EIP)
     print "Checking if Ovivo Updates is ready for connections..."
     val = check_socket(OUPDATES_EIP, 80)
@@ -336,7 +353,6 @@ def startinfr(args):
     val = check_socket(CELERY_EIP, 80)
     while val!= True:
         val = check_socket(CELERY_EIP, 80)
-    #print "Ovivo AWS Infrastructure started"
     
     print "Stopping Ovivo Updates instance..."
     conn.stop_instances(instance_ids=[oupdates_id])
@@ -345,19 +361,18 @@ def startinfr(args):
     while state !="stopped":
         reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
 	state = reservations[0].instances[0].state
+    for i in reservations:
+        instance = i.instances[0]
+    conn.release_address(instance.ip_address)
     print "Ovivo Updates instance stopped"
     print
-    #print "Ovivo AWS Ella Application should be online soon.."
-    #val = check_socket(BACKEND_EIP, 80)
-    #while val!= True:
-    #    val = check_socket(BACKEND_EIP, 80)
     print "Ovivo AWS Ella Application online!"
     print "Operation completed succesfully"
     
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([start,stop,list,getalleip,addeip,diseip,stopinfr,startinfr])
+    p.add_commands([start,stop,list,getalleip,asseip,diseip,stopinfr,startinfr])
     p.dispatch()
 
 
