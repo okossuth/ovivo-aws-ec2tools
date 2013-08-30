@@ -121,7 +121,7 @@ def start(args):
     else:
 	print "Error"
     if args.eip is not None:
-        conn.associate_address(args.instance, args.eip)
+        conn.associate_address(instance.id, args.eip)
     
 
 # List all Elastic IPs added to the AWS Account
