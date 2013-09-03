@@ -82,6 +82,9 @@ def list():
 def stop(args):
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print "Instance name not given. You have to pass the name of the instance using --instance='name'"
+	raise SystemExit(1)
     print "Stopping instance..."
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     for i in reservations:
@@ -106,6 +109,9 @@ def start(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print "Instance name not given. You have to pass the name of the instance using --instance='name'"
+	raise SystemExit(1)
     print "Starting instance..."
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     for i in reservations:
@@ -149,6 +155,9 @@ def asseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print "Instance name not given. You have to pass the name of the instance using --instane='name'"
+	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     for i in reservations:
         instance = i.instances[0]
@@ -170,6 +179,9 @@ def diseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print "Instance name not given. You have to pass the name of the instance using --instane='name'"
+	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     for i in reservations:
         instance = i.instances[0]
