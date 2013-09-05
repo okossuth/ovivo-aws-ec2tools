@@ -10,15 +10,12 @@
 	AWSKEYPEM='/path/to/awskey.pem'         -> your Amazon Key PEM
 
     To use the script type:
-    oaws-ec2snapshot  or oaws-ec2snapshot "Name of Instance" 
+    oaws-ec2snapshot or oaws-ec2snapshot "Name of Instance" 
 """
-import fabric
-from fabric.api import env, roles, cd, run, sudo, prompt, task, local, put, hide, get
-from fabric.main import main
 import time
 import boto.ec2
 import sys
-
+import os
 
 REGION="eu-west-1"
 #REGION="us-east-1"
@@ -45,11 +42,17 @@ def check_library(name):
     raise SystemExit(1)
 
 try:
-    from fabric import *
+    import paramiko
 except ImportError:
-    check_library('fabric')
+    check_library('paramiko')
 
-dnsdict = {}
+try:
+    from argh import *
+except ImportError:
+    check_library('argh')
+
+
+#dnsdict = {}
 
 def _getcreds():
     creds = []
@@ -78,7 +81,17 @@ def _getkeypem():
 	    pos = i
     return aws_keypem[pos+2:-2]
 
-def _gethosts(*name):
+def _getawsaccid():
+    f = open(AWSCREDS, "r")
+    c = f.readlines()
+    f.seek(0)
+    aws_accid = c[3]
+    for i in range(len(aws_accid)):
+        if aws_accid[i] == "=":
+	    pos = i
+    return aws_accid[pos+2:-2]
+
+"""def _gethosts(*name):
     array_inst=[]
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -103,38 +116,86 @@ def _gethosts(*name):
                  dnsdict[iname] = iname
                  
     return tuple(array_inst)
+"""
 
-def snapshot(*name):
+@arg('--instance', help = 'Instance to list snapshots',)
+def list(args):
     AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    if len(name[0]) < 1:
-        val = "''" + dnsdict[env.host_string] + "''"
-    else:
-	val = str(name[0])
-    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % val[2:-2]})
-    print reservations
+    if args.instance == "" or args.instance is None:
+        print 'Listing all snapshots'
+    snaps = conn.get_all_snapshots(owner=AWSACCID)
+    for i in snaps:
+	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
+    
+    
+    """reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     for i in reservations:
         instance = i.instances[0]
 	print instance.id
         volumes = conn.get_all_volumes(filters={'attachment.instance-id': instance.id})
-	print str(volumes[0])[7:]
+	for i in volumes:
+            snaps = conn.snapshots()
+        print snaps
+    """
+    print "All snapshots listed"
+
+def snapall(args):
+    print "snap all"
+
+def create_image(args):
+    print "create image"
+
+@arg('--instance', help = 'Instance to snapshot',)
+
+def snapshot(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    #if len(name[0]) < 1:
+    #    val = "''" + dnsdict[env.host_string] + "''"
+    #else:
+    #	 val = str(name[0])
+    if args.instance == "" or args.instance is None:
+        print 'You have to pass the name of the instance to snapshot using --instance="name"'
+	raise SystemExit(1)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    for i in reservations:
+        instance = i.instances[0]
+	print instance.id
+        volumes = conn.get_all_volumes(filters={'attachment.instance-id': instance.id})
+	for i in volumes:
+	    #vol = i[7:]
+	    print str(i)[7:]
 	#print "Freezing filesytem..."
 	#run('sudo fsfreeze -f / && sleep 30 && fsfreeze -u /')
 	if instance.state == "running":
-	    run('sync')
+	    host = instance.ip_address
+	    ssh = paramiko.SSHClient()
+	    sshkey = _getkeypem()
+	    privkey = paramiko.RSAKey.from_private_key_file (sshkey)
+	    ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+	    ssh.connect(host,username='oskar',pkey=privkey)
+	    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('sync')
+	    print "output", ssh_stdout.read() 
         else:
 	    print "Ovivo is stopped or IPs not available"
 	    pass
         print instance.tags['Name']
 	print "Creating snapshot..."
-	snapshot = conn.create_snapshot(str(volumes[0])[7:], val[2:-2])
+	snapshot = conn.create_snapshot(str(volumes[0])[7:], args.instance)
 	#print "Thawing filesystem..."
         #run('sudo fsfreeze -u /')
         print "Snapshot %s created!" % snapshot
 
 
 if __name__ == '__main__':
-    sys.argv = ['fab', '-f', __file__, ] + sys.argv[1:]
+    p = ArghParser()
+    p.add_commands([list, snapshot, snapall, create_image])
+    p.dispatch()
+
+
+"""    sys.argv = ['fab', '-f', __file__, ] + sys.argv[1:]
     env.hosts = _gethosts(sys.argv[3:])
     env.user = 'oskar'
     env.key_filename = _getkeypem()
@@ -143,4 +204,4 @@ if __name__ == '__main__':
     for i in env.hosts:
 	env.host_string = i
 	snapshot(sys.argv[3:])
-
+"""
