@@ -125,21 +125,14 @@ def list(args):
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print 'Listing all snapshots'
-    snaps = conn.get_all_snapshots(owner=AWSACCID)
-    for i in snaps:
+        snaps = conn.get_all_snapshots(owner=AWSACCID)
+        for i in snaps:
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
-    
-    
-    """reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
-    for i in reservations:
-        instance = i.instances[0]
-	print instance.id
-        volumes = conn.get_all_volumes(filters={'attachment.instance-id': instance.id})
-	for i in volumes:
-            snaps = conn.snapshots()
-        print snaps
-    """
-    print "All snapshots listed"
+    else:
+	snaps = conn.get_all_snapshots(filters = {"description": args.instance})
+	for i in snaps:
+	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
+	   
 
 def snapall(args):
     print "snap all"
