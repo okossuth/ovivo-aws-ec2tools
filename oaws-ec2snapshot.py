@@ -16,6 +16,8 @@ import time
 import boto.ec2
 import sys
 import os
+from boto.ec2.blockdevicemapping import EBSBlockDeviceType, BlockDeviceMapping
+from boto.exception import EC2ResponseError
 
 REGION="eu-west-1"
 #REGION="us-east-1"
@@ -51,8 +53,6 @@ try:
 except ImportError:
     check_library('argh')
 
-
-#dnsdict = {}
 
 def _getcreds():
     creds = []
@@ -91,35 +91,9 @@ def _getawsaccid():
 	    pos = i
     return aws_accid[pos+2:-2]
 
-"""def _gethosts(*name):
-    array_inst=[]
-    AWSAKEY,AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    if len(name[0]) < 1:
-        reservations = conn.get_all_instances()
-    else:
-        val = str(name[0])
-	reservations = conn.get_all_instances(filters={"tag:Name": "%s" % val[2:-2]})
-    for i in reservations:
-        instance = i.instances[0]
-	id_instance = instance.id
-	ip_instance = instance.ip_address
-	sec_instance = instance.groups[0]
-	iname = instance.tags['Name']
-	if ip_instance is not None and (sec_instance.id==VPCID_EUWEST or sec_instance.id==VPCID_USEAST):
-	     array_inst.append(ip_instance)
-             dnsdict[ip_instance] = iname
-	     
-	else:
-	    if ip_instance is None and (sec_instance.id==VPCID_EUWEST or sec_instance.id==VPCID_USEAST):
-	         array_inst.append(iname)
-                 dnsdict[iname] = iname
-                 
-    return tuple(array_inst)
-"""
 
 @arg('--instance', help = 'Instance to list snapshots',)
-def list(args):
+def snaplist(args):
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -137,11 +111,50 @@ def list(args):
 def snapall(args):
     print "snap all"
 
+
+@arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
+def delsnap:
+    print ""
+
+@arg('--imageid', help = 'Image ID of the image to delete',)
+def delimage:
+    print ""
+
+def imagelist(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    images = conn.get_all_images(owners=AWSACCID)
+    print "Images available from Ovivo"
+    print "------------------------------------"
+    print
+    for i in images:
+        print "%s --- %s %s %s %s" % (i.id,i.description,i.name,i.architecture,i.kernel_id)	    
+
+@arg('--snapshotid', help = 'Snapshot ID to create image from',)
 def create_image(args):
-    print "create image"
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.snapshotid == "" or args.snapshotid is None:
+        print "You have to pass the snapshot ID used to create the image with --snapshotid"
+	raise SystemExit(1)
+    else:
+	namei = raw_input("Enter name of image: ")
+	descr = raw_input("Enter a description for image: ")
+        print "Creating image from snapshot %s ..." % args.snapshotid
+	ebs = EBSBlockDeviceType()
+	ebs.snapshot_id = args.snapshotid
+	block_map = BlockDeviceMapping()
+	block_map['/dev/sda1'] = ebs
+	try:
+            ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-71665e05',\
+			root_device_name='/dev/sda1', block_device_map=block_map)
+	    print "Image creation successful"
+	except EC2ResponseError:
+	    print "Image creation error"
 
 @arg('--instance', help = 'Instance to snapshot',)
-
 def snapshot(args):
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -184,17 +197,6 @@ def snapshot(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([list, snapshot, snapall, create_image])
+    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap])
     p.dispatch()
 
-
-"""    sys.argv = ['fab', '-f', __file__, ] + sys.argv[1:]
-    env.hosts = _gethosts(sys.argv[3:])
-    env.user = 'oskar'
-    env.key_filename = _getkeypem()
-    env.warn_only = True
-    fabric.state.output['running'] = False
-    for i in env.hosts:
-	env.host_string = i
-	snapshot(sys.argv[3:])
-"""
