@@ -106,19 +106,42 @@ def snaplist(args):
 	snaps = conn.get_all_snapshots(filters = {"description": args.instance})
 	for i in snaps:
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
-	   
+    print	   
 
 def snapall(args):
     print "snap all"
 
 
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
-def delsnap:
-    print ""
+def delsnap(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.snapshotid == "" or args.snapshotid is None:
+        print "You have to pass the snapshot ID of the snapshot to be deleted"
+	raise SystemExit(1)
+    else:
+	try:
+	    print ""
+	    conn.delete_snapshot(args.snapshotid)
+	    print "Snapshot deleted successfully"
+	except EC2ResponseError:
+            print "Error when trying to delete snapshot %s" % args.snapshotid
 
 @arg('--imageid', help = 'Image ID of the image to delete',)
-def delimage:
-    print ""
+def delimage(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.imageid == "" or args.imageid is None:
+        print "You have to pass the image ID of the image to be deleted"
+	raise SystemExit(1)
+    else:
+	try:
+	    ret = conn.deregister_image(args.imageid)
+	    print "Image %s deleted successfuly" % args.imageid
+	except EC2ResponseError:
+	    print "Error when trying to delete image %s" % args.imageid
 
 def imagelist(args):
     AWSAKEY,AWSSKEY = _getcreds()
@@ -129,7 +152,8 @@ def imagelist(args):
     print "------------------------------------"
     print
     for i in images:
-        print "%s --- %s %s %s %s" % (i.id,i.description,i.name,i.architecture,i.kernel_id)	    
+        print "%s --- %s | %s | %s | %s" % (i.id,i.description,i.name,i.architecture,i.kernel_id)	    
+    print
 
 @arg('--snapshotid', help = 'Snapshot ID to create image from',)
 def create_image(args):
