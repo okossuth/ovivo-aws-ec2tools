@@ -6,7 +6,7 @@
     Oskar Kossuth (c) 2013
 
     Operations supported:
-    - List all running instances  (list)
+    - List all running instances  (ec2list)
     - Stop a running instance     (stop)
     - Start a stopped instance    (start)
     - Get all elastic IPs associated to instances   (getalleip)
@@ -28,6 +28,20 @@ CELERY_EIP="46.137.79.20"
 MQREDIS_EIP="54.246.99.180"
 DBMASTER_EIP="54.247.108.126"
 AWSCREDS="./awscreds.txt"
+
+
+class Color:
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
 
 def ensure_the_library_is_installed(name):
 	    print 'You have to install the python library "%s" in order to use ' \
@@ -58,6 +72,7 @@ def _getcreds():
     creds.append(aws_skey[pos+2:-2])
     return tuple(creds)
 
+# Check socket to see if its available and accepting connections
 def check_socket(address,port):
     s = socket.socket()
     try:
@@ -68,13 +83,17 @@ def check_socket(address,port):
 	return False
 
 # Lists all the Instances in the Amazon account
-def list():
+def ec2list():
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
+    print Color.BOLD + Color.BLUE + "Ovivo Amazon EC2 Instances" + Color.END
+    print "--------------------------"
+    print
     for i in reservations:
         instance = i.instances[0]
-	print "Instance %s , Type: %s , Name: %s , State: %s \n" % (instance.id,instance.instance_type,instance.tags['Name'], instance.state) 
+	print "Instance: %s , Name: %s , Type: %s , State: %s " % (instance.id,instance.tags['Name'],instance.instance_type, instance.state)
+    print
 
 # Stops a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to stop',)
@@ -166,7 +185,7 @@ def asseip(args):
         iname = icod[0].instances[0].tags['Name']
 	if args.eip is None:
 	    args.eip = conn.allocate_address()
-        print args.eip
+	print args.eip
         conn.associate_address(instance.id, args.eip)
         print "EIP %s added succesfully to Instance %s \n" % (args.eip, iname)
 
@@ -384,7 +403,7 @@ def startinfr(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([start,stop,list,getalleip,asseip,diseip,stopinfr,startinfr])
+    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,stopinfr,startinfr])
     p.dispatch()
 
 
