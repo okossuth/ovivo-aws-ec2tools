@@ -91,14 +91,14 @@ def _getawsaccid():
 	    pos = i
     return aws_accid[pos+2:-2]
 
-
+# List all snapshots in Amazon account or particular instance
 @arg('--instance', help = 'Instance to list snapshots',)
 def snaplist(args):
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
-        print 'Listing all snapshots'
+        print 'Listing all Ovivo snapshots'
         snaps = conn.get_all_snapshots(owner=AWSACCID)
         for i in snaps:
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
@@ -108,10 +108,13 @@ def snaplist(args):
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
     print	   
 
+# Snapshot all instances on Amazon account
 def snapall(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     print "snap all"
 
-
+# Delete a particular snapshot 
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
 def delsnap(args):
     AWSAKEY,AWSSKEY = _getcreds()
@@ -128,6 +131,7 @@ def delsnap(args):
 	except EC2ResponseError:
             print "Error when trying to delete snapshot %s" % args.snapshotid
 
+# Delete a particular Amazon image
 @arg('--imageid', help = 'Image ID of the image to delete',)
 def delimage(args):
     AWSAKEY,AWSSKEY = _getcreds()
@@ -143,6 +147,7 @@ def delimage(args):
 	except EC2ResponseError:
 	    print "Error when trying to delete image %s" % args.imageid
 
+# List all images of Amazon account
 def imagelist(args):
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
@@ -155,6 +160,7 @@ def imagelist(args):
         print "%s --- %s | %s | %s | %s" % (i.id,i.description,i.name,i.architecture,i.kernel_id)	    
     print
 
+# Create Amazon image from snapshot
 @arg('--snapshotid', help = 'Snapshot ID to create image from',)
 def create_image(args):
     AWSAKEY,AWSSKEY = _getcreds()
@@ -178,14 +184,11 @@ def create_image(args):
 	except EC2ResponseError:
 	    print "Image creation error"
 
+# Create snapshot from a particular Amazon instance
 @arg('--instance', help = 'Instance to snapshot',)
 def snapshot(args):
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    #if len(name[0]) < 1:
-    #    val = "''" + dnsdict[env.host_string] + "''"
-    #else:
-    #	 val = str(name[0])
     if args.instance == "" or args.instance is None:
         print 'You have to pass the name of the instance to snapshot using --instance="name"'
 	raise SystemExit(1)
