@@ -19,7 +19,7 @@
 
 import boto.ec2
 import socket
-
+from boto.exception import EC2ResponseError
 
 REGION="eu-west-1"
 #REGION="us-east-1"
@@ -94,6 +94,36 @@ def ec2list():
         instance = i.instances[0]
 	print "Instance: %s , Name: %s , Type: %s , State: %s " % (instance.id,instance.tags['Name'],instance.instance_type, instance.state)
     print
+
+# Change type of Amazon instance
+@arg('--instance',help='Instance to change type',)
+@arg('--itype',help='Type to choose',)
+def chgtype(args):
+    AWSAKEY, AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None or args.itype is None:
+        print "Instance name or Instance Type not given. You have to pass the name of the instance using --instance='name'"
+	print "or the instance type using --type='name'"
+	raise SystemExit(1)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    for i in reservations:
+        instance = i.instances[0]
+    state = instance.state
+    old_type = instance.instance_type
+    icod = instance.id
+    if state == "stopped":
+        print "Changing instance type from %s to %s" % (old_type,args.itype)
+	try:
+	    conn.modify_instance_attribute(icod,'instanceType',args.itype)
+	    print "%s instance type modified to %s" % (args.instance,args.itype)
+	except EC2ResponseError:
+	    print "An Error occured: Failed to change instance type"
+    else:
+	print "Instance is running. Please stop it before changing instance type"
+	raise SystemExit(1)
+
+     
+     
 
 # Stops a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to stop',)
@@ -403,7 +433,7 @@ def startinfr(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,stopinfr,startinfr])
+    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,chgtype,stopinfr,startinfr])
     p.dispatch()
 
 
