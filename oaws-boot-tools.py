@@ -134,8 +134,11 @@ def stop(args):
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instance='name'"
 	raise SystemExit(1)
-    print "Stopping instance..."
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
+    print "Stopping instance..."
     for i in reservations:
         instance = i.instances[0]
     if instance.tags['Name'] == "%s" % args.instance :
@@ -161,8 +164,11 @@ def start(args):
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instance='name'"
 	raise SystemExit(1)
-    print "Starting instance..."
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
+    print "Starting instance..."
     for i in reservations:
         instance = i.instances[0]
     if instance.tags['Name'] == "%s" % args.instance :
@@ -208,6 +214,9 @@ def asseip(args):
         print "Instance name not given. You have to pass the name of the instance using --instane='name'"
 	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
     for i in reservations:
         instance = i.instances[0]
     if instance.tags['Name'] == "%s" % args.instance :
@@ -232,6 +241,9 @@ def diseip(args):
         print "Instance name not given. You have to pass the name of the instance using --instane='name'"
 	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
     for i in reservations:
         instance = i.instances[0]
     if instance.tags['Name'] == "%s" % args.instance :
