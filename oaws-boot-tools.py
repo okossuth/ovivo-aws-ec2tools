@@ -106,6 +106,9 @@ def chgtype(args):
 	print "or the instance type using --type='name'"
 	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
     for i in reservations:
         instance = i.instances[0]
     state = instance.state
@@ -113,7 +116,7 @@ def chgtype(args):
     icod = instance.id
     if state == "stopped":
         print "Changing instance type from %s to %s" % (old_type,args.itype)
-	try:
+        try:
 	    conn.modify_instance_attribute(icod,'instanceType',args.itype)
 	    print "%s instance type modified to %s" % (args.instance,args.itype)
 	except EC2ResponseError:
@@ -121,9 +124,6 @@ def chgtype(args):
     else:
 	print "Instance is running. Please stop it before changing instance type"
 	raise SystemExit(1)
-
-     
-     
 
 # Stops a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to stop',)
