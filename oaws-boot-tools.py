@@ -30,7 +30,7 @@ MQREDIS_EIP="54.246.99.180"
 DBMASTER_EIP="54.247.108.126"
 CELERYSMS_EIP="54.228.206.75"
 CELERYLP_EIP="54.228.206.174"
-OUPDATES_EIP="54.228.207.27"
+#OUPDATES_EIP="54.228.207.27"
 AWSCREDS="./awscreds.txt"
 
 
@@ -291,15 +291,18 @@ def stopinfr(args):
 
     print "Ovivo Updates Instance is running"
     #OUPDATES_EIP = conn.allocate_address()
-    conn.associate_address(oupdates_id, OUPDATES_EIP)
-    #OUPDATES_EIP = oupdates_id.ip_address
+    #conn.associate_address(oupdates_id, OUPDATES_EIP)
+    #print OUPDATES_EIP
+    OUPDATES_DNS = reservations[0].instances[0].public_dns_name
+    print OUPDATES_DNS
     print "Checking if Ovivo Updates is ready for connections..."
-    val = check_socket(OUPDATES_EIP, 80)
+    val = check_socket(OUPDATES_DNS, 80)
     while val!= True:
-        val = check_socket(OUPDATES_EIP, 80)
+        val = check_socket(OUPDATES_DNS, 80)
     
-    print "Connected to Ovivo Updates address %s on port %s \n" % (OUPDATES_EIP,"80")
-    conn.disassociate_address(OUPDATES_EIP,oupdates_id)
+    print "Connected to Ovivo Updates address %s on port %s \n" % (OUPDATES_DNS,"80")
+
+   # conn.disassociate_address(OUPDATES_EIP,oupdates_id)
     conn.disassociate_address(BACKEND_EIP,backend_id)
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Production Backend")
     conn.associate_address(oupdates_id, BACKEND_EIP)
@@ -362,8 +365,9 @@ def stopinfr(args):
         reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
 	state = reservations[0].instances[0].state
     print "Production DB Master instance stopped"
-    print
-    print "Ovivo AWS Infrastructure stopped"
+
+   print
+   print "Ovivo AWS Infrastructure stopped"
 
 
 # Starts the Ovivo Production Infrastructure automatically launching each instance in order
@@ -434,12 +438,15 @@ def startinfr(args):
     #conn.disassociate_address(BACKEND_EIP,oupdates_id)
     #print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
     #conn.associate_address(backend_id, BACKEND_EIP)
-    conn.associate_address(backend_id, OUPDATES_EIP)
+    
+    #conn.associate_address(backend_id, OUPDATES_EIP)
+    
     #print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
-    print "EIP %s added succesfully to Instance %s \n" % (OUPDATES_EIP, "Production Backend")
-    val = check_socket(OUPDATES_EIP, 80)
+    #print "EIP %s added succesfully to Instance %s \n" % (OUPDATES_EIP, "Production Backend")
+    BACKEND_DNS = reservations[0].instances[0].public_dns_name
+    val = check_socket(BACKEND_DNS, 80)
     while val!= True:
-        val = check_socket(OUPDATES_EIP, 80)
+        val = check_socket(BACKEND_DNS, 80)
     print "Production Backend instance running"
     print
     
@@ -492,7 +499,7 @@ def startinfr(args):
     #conn.release_address(instance.ip_address)
     conn.disassociate_address(BACKEND_EIP, oupdates_id)
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
-    conn.disassociate_address(OUPDATES_EIP,backend_id)
+    #conn.disassociate_address(OUPDATES_EIP,backend_id)
     conn.associate_address(backend_id, BACKEND_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
     print "Ovivo Updates instance stopped"
