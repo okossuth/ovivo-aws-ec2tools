@@ -30,6 +30,7 @@ MQREDIS_EIP="54.246.99.180"
 DBMASTER_EIP="54.247.108.126"
 CELERYSMS_EIP="54.228.206.75"
 CELERYLP_EIP="54.228.206.174"
+OUPDATES_EIP="54.228.207.27"
 AWSCREDS="./awscreds.txt"
 
 
@@ -130,7 +131,6 @@ def chgtype(args):
 
 # Stops a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to stop',)
-
 def stop(args):
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -158,8 +158,7 @@ def stop(args):
 
 # Starts a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to start',)
-@arg('--eip',help='EIP to add',)
-
+@arg('--eip',help='EIP to associate',)
 def start(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
@@ -208,13 +207,15 @@ def getalleip():
 # Associate an elastic IP address to a particular Instance
 @arg('--instance',help='Instance ID of the instance to add EIP',)
 @arg('--eip',help='EIP to add',)
-
 def asseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instane='name'"
+	raise SystemExit(1)
+    if args.eip is None:
+	print 'EIP to associate not given. Please use the --eip="IP" switch...'
 	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     if len(reservations) == 0:
@@ -225,17 +226,14 @@ def asseip(args):
     if instance.tags['Name'] == "%s" % args.instance :
         icod = conn.get_all_instances(instance.id)
         iname = icod[0].instances[0].tags['Name']
-	if args.eip is None:
-	    args.eip = conn.allocate_address()
 	print args.eip
-        conn.associate_address(instance.id, args.eip)
+	conn.associate_address(instance.id, args.eip)
         print "EIP %s added succesfully to Instance %s \n" % (args.eip, iname)
 
 
 # Disassociate an elastic IP address from a particular Instance
 @arg('--instance',help='Instance ID of the instance to disassociate EIP',)
 @arg('--eip',help='EIP to disassociate',)
-
 def diseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
@@ -292,8 +290,9 @@ def stopinfr(args):
 	state = reservations[0].instances[0].state
 
     print "Ovivo Updates Instance is running"
-    OUPDATES_EIP = conn.allocate_address()
+    #OUPDATES_EIP = conn.allocate_address()
     conn.associate_address(oupdates_id, OUPDATES_EIP)
+    #OUPDATES_EIP = oupdates_id.ip_address
     print "Checking if Ovivo Updates is ready for connections..."
     val = check_socket(OUPDATES_EIP, 80)
     while val!= True:
@@ -432,13 +431,15 @@ def startinfr(args):
     while state !="running":
         reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
 	state = reservations[0].instances[0].state
-    conn.disassociate_address(BACKEND_EIP,oupdates_id)
-    print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
-    conn.associate_address(backend_id, BACKEND_EIP)
-    print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
-    val = check_socket(BACKEND_EIP, 80)
+    #conn.disassociate_address(BACKEND_EIP,oupdates_id)
+    #print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
+    #conn.associate_address(backend_id, BACKEND_EIP)
+    conn.associate_address(backend_id, OUPDATES_EIP)
+    #print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
+    print "EIP %s added succesfully to Instance %s \n" % (OUPDATES_EIP, "Production Backend")
+    val = check_socket(OUPDATES_EIP, 80)
     while val!= True:
-        val = check_socket(BACKEND_EIP, 80)
+        val = check_socket(OUPDATES_EIP, 80)
     print "Production Backend instance running"
     print
     
@@ -452,9 +453,6 @@ def startinfr(args):
     conn.associate_address(celery_id, CELERY_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (CELERY_EIP, "Production Celery")
     print "Production Celery instance running"
-    val = check_socket(CELERY_EIP, 80)
-    while val!= True:
-        val = check_socket(CELERY_EIP, 80)
     
     print "Starting Production CelerySMS instance..."
     conn.start_instances(instance_ids=[celerysms_id])
@@ -466,9 +464,6 @@ def startinfr(args):
     conn.associate_address(celerysms_id, CELERYSMS_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (CELERYSMS_EIP, "Production CelerySMS")
     print "Production CelerySMS instance running"
-    #val = check_socket(CELERYSMS_EIP, 80)
-    #while val!= True:
-    #    val = check_socket(CELERY_EIP, 80)
     
     print "Starting Production CeleryLowPrio instance..."
     conn.start_instances(instance_ids=[celerylp_id])
@@ -480,9 +475,10 @@ def startinfr(args):
     conn.associate_address(celerylp_id, CELERYLP_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (CELERYLP_EIP, "Production CeleryLowPrio")
     print "Production CeleryLowPrio instance running"
-    #val = check_socket(CELERYSMS_EIP, 80)
-    #while val!= True:
-    #    val = check_socket(CELERY_EIP, 80)
+    
+    val = check_socket(CELERY_EIP, 80)
+    while val!= True:
+        val = check_socket(CELERY_EIP, 80)
     
     print "Stopping Ovivo Updates instance..."
     conn.stop_instances(instance_ids=[oupdates_id])
@@ -493,7 +489,12 @@ def startinfr(args):
 	state = reservations[0].instances[0].state
     for i in reservations:
         instance = i.instances[0]
-    conn.release_address(instance.ip_address)
+    #conn.release_address(instance.ip_address)
+    conn.disassociate_address(BACKEND_EIP, oupdates_id)
+    print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
+    conn.disassociate_address(OUPDATES_EIP,backend_id)
+    conn.associate_address(backend_id, BACKEND_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
     print "Ovivo Updates instance stopped"
     print
     print "Ovivo AWS Ella Application online!"
