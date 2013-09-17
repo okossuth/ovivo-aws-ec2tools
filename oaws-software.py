@@ -69,6 +69,7 @@ def host(server, cmd, user):
    
 def checksw():
     br = Browser()
+    print "Checking librabbitmq..."
     libversion = host(BACKEND, 'source /home/ella/Ella/venv/bin/activate; pip freeze | grep librab', 'ella')
     br.open("https://pypi.python.org/pypi/librabbitmq")
     page = br.response().read()
@@ -81,7 +82,8 @@ def checksw():
         print (color.RED + "New version of librabbitmq available: %s !!\n" + color.END)  % version
     else:
 	print "librabbitmq version %s up to date \n" % version
-
+    
+    print "Checking celery..."
     libversion = host(CELERY, 'source /home/ella/Ella/venv/bin/activate; pip freeze | grep ^celery', 'ella')
     br.open("https://pypi.python.org/pypi/celery")
     page = br.response().read()
@@ -91,10 +93,11 @@ def checksw():
 	    version = i[-10:-4]
     libversion = libversion[8:]
     if not version in libversion:
-        print (color.RED + "New version of celery available: %s \n!!" + color.END)  % version
+        print (color.RED + "New version of celery available: %s !!\n" + color.END)  % version
     else:
 	print "celery version %s up to date \n" % version
     
+    print "Checking django-celery..."
     libversion = host(CELERY, 'source /home/ella/Ella/venv/bin/activate; pip freeze | grep django-celery', 'ella')
     br.open("https://pypi.python.org/pypi/django-celery")
     page = br.response().read()
@@ -104,10 +107,11 @@ def checksw():
 	    version = i[-10:-4]
     libversion = libversion[15:]
     if not version in libversion:
-        print (color.RED + "New version of django-celery available: %s \n!!" + color.END)  % version
+        print (color.RED + "New version of django-celery available: %s !!\n" + color.END)  % version
     else:
 	print "django-celery version %s up to date \n" % version
     
+    print "Checking uWSGI..."
     libversion = host(BACKEND, '/usr/bin/uwsgi --version', 'oskar')
     br.open("https://pypi.python.org/pypi/uWSGI")
     page = br.response().read()
@@ -116,10 +120,11 @@ def checksw():
         if 'href="/pypi/uWSGI/' in i:
 	    version = i[-10:-4]
     if not version in libversion:
-        print (color.RED + "New version of uWSGI available: %s \n!!" + color.END)  % version
+        print (color.RED + "New version of uWSGI available: %s !!\n" + color.END)  % version
     else:
 	print "uWSGI version %s up to date \n" % version
     
+    print "Checking supervisor..."
     libversion = host(BACKEND, 'pip freeze | grep supervisor','oskar')
     br.open("https://pypi.python.org/pypi/supervisor")
     page = br.response().read()
@@ -129,10 +134,11 @@ def checksw():
 	    version = i[-7:-4]
     libversion = libversion[12:]
     if not version in libversion:
-        print (color.RED + "New version of supervisor available: %s \n!!" + color.END)  % version
+        print (color.RED + "New version of supervisor available: %s !!\n" + color.END)  % version
     else:
 	print "supervisor version %s up to date \n" % version
     
+    print "Checking uWSGItop..."
     libversion = host(BACKEND, 'pip freeze | grep uwsgitop','oskar')
     br.open("https://pypi.python.org/pypi/uwsgitop")
     page = br.response().read()
@@ -140,10 +146,9 @@ def checksw():
     for i in data:
         if 'href="/pypi/uwsgitop/' in i:
 	    version = i[-9:-4]
-	    print version
     libversion = libversion[10:]
     if not version in libversion:
-        print (color.RED + "New version of uWSGItop available: %s \n!!" + color.END)  % version
+        print (color.RED + "New version of uWSGItop available: %s !!\n" + color.END)  % version
     else:
 	print "uWSGItop version %s up to date \n" % version
     
