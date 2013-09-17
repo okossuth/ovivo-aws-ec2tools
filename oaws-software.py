@@ -108,14 +108,13 @@ def checksw():
     else:
 	print "django-celery version %s up to date \n" % version
     
-    libversion = host(BACKEND, 'pip freeze | grep uwsgi', 'oskar')
+    libversion = host(BACKEND, '/usr/bin/uwsgi --version', 'oskar')
     br.open("https://pypi.python.org/pypi/uWSGI")
     page = br.response().read()
     data = page.split('\n')
     for i in data:
         if 'href="/pypi/uWSGI/' in i:
 	    version = i[-10:-4]
-    libversion = libversion[7:]
     if not version in libversion:
         print (color.RED + "New version of uWSGI available: %s \n!!" + color.END)  % version
     else:
