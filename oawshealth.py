@@ -118,6 +118,10 @@ def health(*name):
 		print "Instance state: %s " % instance.state
                 print "Instance ID: %s " % instance.id
 	        print "Instance Type: %s " % instance.instance_type
+		status = run('cat /proc/cpuinfo | grep "model name" | head -1')
+	        print (color.RED + "Processor Type" +color.END)
+		print status
+		print
                 status = run('uptime')
 	        print (color.GREEN + "Instance Uptime" +color.END)
 		print status
