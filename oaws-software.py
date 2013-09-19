@@ -12,6 +12,8 @@ that are not updates via Amazon's YUM repositories. Examples of these are:
 """
 
 import os
+import smtplib
+from email.mime.text import MIMEText
 from mechanize import Browser
 
 AWSCREDS = "./awscreds.txt"
@@ -58,6 +60,7 @@ def _getkeypem():
 def host(server, cmd, user):
     hostip = server
     ssh = paramiko.SSHClient()
+    #sshkey = "/home/ella/.ssh/ellaswcheck_rsa"
     sshkey = _getkeypem()
     privkey = paramiko.RSAKey.from_private_key_file (sshkey)
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
@@ -68,6 +71,7 @@ def host(server, cmd, user):
     return val
    
 def checksw():
+    message = []
     br = Browser()
     print "Checking librabbitmq..."
     libversion = host(BACKEND, 'source /home/ella/Ella/venv/bin/activate; pip freeze | grep librab', 'ella')
@@ -80,6 +84,7 @@ def checksw():
     libversion = libversion[13:]
     if not version in libversion:
         print (color.RED + "New version of librabbitmq available: %s !!\n" + color.END)  % version
+        message = "New version of librabbitmq available: %s !!\n" % version
     else:
 	print "librabbitmq version %s up to date \n" % version
     
@@ -94,6 +99,7 @@ def checksw():
     libversion = libversion[8:]
     if not version in libversion:
         print (color.RED + "New version of celery available: %s !!\n" + color.END)  % version
+        message = "New version of celery available: %s !!\n" % version
     else:
 	print "celery version %s up to date \n" % version
     
@@ -108,6 +114,7 @@ def checksw():
     libversion = libversion[15:]
     if not version in libversion:
         print (color.RED + "New version of django-celery available: %s !!\n" + color.END)  % version
+        message = "New version of django-celery available: %s !!\n" % version
     else:
 	print "django-celery version %s up to date \n" % version
     
@@ -121,6 +128,7 @@ def checksw():
 	    version = i[-10:-4]
     if not version in libversion:
         print (color.RED + "New version of uWSGI available: %s !!\n" + color.END)  % version
+        message = "New version of uWSGI available: %s !!\n" % version
     else:
 	print "uWSGI version %s up to date \n" % version
     
@@ -135,6 +143,7 @@ def checksw():
     libversion = libversion[12:]
     if not version in libversion:
         print (color.RED + "New version of supervisor available: %s !!\n" + color.END)  % version
+        message = "New version of supervisor available: %s !!\n" % version
     else:
 	print "supervisor version %s up to date \n" % version
     
@@ -149,10 +158,24 @@ def checksw():
     libversion = libversion[10:]
     if not version in libversion:
         print (color.RED + "New version of uWSGItop available: %s !!\n" + color.END)  % version
+        message = "New version of uWSGItop available: %s !!\n" % version
     else:
 	print "uWSGItop version %s up to date \n" % version
     
-    
+    if len(message) >= 1:
+        print message
+	me = "sysadminops@ovivo.dk"
+	to = "okossuth@gmail.com"
+	msg = MIMEText(message)
+        msg['Subject'] = "Software Updates available for Ovivo's Ella App"
+	msg['From'] = me
+	msg['To'] = to
+	s = smtplib.SMTP('localhost')
+	s.sendmail(me, to, msg.as_string())
+	s.quit()
+    else:
+	print "Everything up to date"
+
 if __name__ == '__main__':
     p = ArghParser()
     p.add_commands([checksw])
