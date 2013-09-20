@@ -15,6 +15,7 @@
     - Stop Ovivo's Production Instances in order    (stopinfr)
     - Start Ovivo's Production Instances in order   (startinfr)
     - Change Instance Type                          (chgtype)
+    - Reboot instance                               (reboot) 
     
     """
 
@@ -128,6 +129,25 @@ def chgtype(args):
     else:
 	print "Instance is running. Please stop it before changing instance type"
 	raise SystemExit(1)
+
+# Reboot a particular Amazon Instance
+@arg('--instance', help='Instance ID of the instance to reboot',)
+def reboot(args):
+    AWSAKEY, AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print "Instance name not given. You have to pass the name of the instance using --instance='name'"
+	raise SystemExit(1)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
+    for i in reservations:
+        instance = i.instances[0]
+    if instance.tags['Name'] == "%s" % args.instance :
+        print "Rebooting instance..."
+        conn.reboot_instances(instance_ids=[instance.id])
+    print "Instance %s is running" % args.instance	
 
 # Stops a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to stop',)
@@ -314,60 +334,71 @@ def stopinfr(args):
     print
     print "Stopping Production CeleryLowPrio instance..."
     conn.stop_instances(instance_ids=[celerylp_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryLowPrio"});
-    state = reservations[0].instances[0].state
-    while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryLowPrio"});
-	state = reservations[0].instances[0].state
-    print "Production CeleryLowPrio instance stopped"
-    print
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryLowPrio"});
+    #state = reservations[0].instances[0].state
+    #while state !="stopped":
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryLowPrio"});
+    #	state = reservations[0].instances[0].state
+    #print "Production CeleryLowPrio instance stopped"
+    #print
     print "Stopping Production CelerySMS instance..."
     conn.stop_instances(instance_ids=[celerysms_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
-    state = reservations[0].instances[0].state
-    while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
-	state = reservations[0].instances[0].state
-    print "Production CelerySMS instance stopped"
-    print
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
+    #state = reservations[0].instances[0].state
+    #while state !="stopped":
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
+    #	state = reservations[0].instances[0].state
+    #print "Production CelerySMS instance stopped"
+    #print
     print "Stopping Production Celery instance..."
     conn.stop_instances(instance_ids=[celery_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
-    state = reservations[0].instances[0].state
-    while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
-	state = reservations[0].instances[0].state
-    print "Production Celery instance stopped"
-    print
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
+    #state = reservations[0].instances[0].state
+    #while state !="stopped":
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
+    #	state = reservations[0].instances[0].state
+    #print "Production Celery instance stopped"
+    #print
     print "Stopping Production Backend instance..."
     conn.stop_instances(instance_ids=[backend_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
-    state = reservations[0].instances[0].state
-    while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
-	state = reservations[0].instances[0].state
-    print "Production Backend instance stopped"
-    print
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
+    #state = reservations[0].instances[0].state
+    #while state !="stopped":
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
+    #	state = reservations[0].instances[0].state
+    #print "Production Backend instance stopped"
+    #print
     print "Stopping Production MQRedis instance..."
     conn.stop_instances(instance_ids=[mqredis_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
-    state = reservations[0].instances[0].state
-    while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
-	state = reservations[0].instances[0].state
-    print "Production MQRedis instance stopped"
-    print
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
+    #state = reservations[0].instances[0].state
+    #while state !="stopped":
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
+    #	state = reservations[0].instances[0].state
+    #print "Production MQRedis instance stopped"
+    #print
     print "Stopping Production DB Master instance..."
     conn.stop_instances(instance_ids=[dbmaster_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
-    state = reservations[0].instances[0].state
-    while state !="stopped":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
-	state = reservations[0].instances[0].state
-    print "Production DB Master instance stopped"
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
+    #state = reservations[0].instances[0].state
+    #while state !="stopped":
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
+    #	state = reservations[0].instances[0].state
+    #print "Production DB Master instance stopped"
+    print "Checking if the Production infrastructure is completely halted..."
+    ids = conn.get_all_instances()
+    for i in ids:
+        codinstance = i.instances[0]
+        state = codinstance.state
+	if state !="stopped":
+	    print "Instance %s state is still %s, waiting to be completely stopped..." % (codinstance.tags['Name'],codinstance.state)
+            while state !="stopped":
+                res = conn.get_all_instances(codinstance.id);
+	        state = res[0].instances[0].state
+	print "Instance %s state is %s" % (codinstance.tags['Name'],codinstance.state)
 
-   print
-   print "Ovivo AWS Infrastructure stopped"
+    print
+    print "Ovivo AWS Infrastructure stopped"
 
 
 # Starts the Ovivo Production Infrastructure automatically launching each instance in order
@@ -510,7 +541,7 @@ def startinfr(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,chgtype,stopinfr,startinfr])
+    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,chgtype,reboot,stopinfr,startinfr])
     p.dispatch()
 
 
