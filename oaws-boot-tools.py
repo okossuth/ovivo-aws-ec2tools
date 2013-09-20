@@ -21,6 +21,7 @@
 
 import boto.ec2
 import socket
+import time
 from boto.exception import EC2ResponseError
 
 REGION="eu-west-1"
@@ -147,6 +148,10 @@ def reboot(args):
     if instance.tags['Name'] == "%s" % args.instance :
         print "Rebooting instance..."
         conn.reboot_instances(instance_ids=[instance.id])
+	time.sleep(5)
+    val = check_socket(instance.ip_address, 22)
+    while val!= True:
+        val = check_socket(instance.ip_address, 22)
     print "Instance %s is running" % args.instance	
 
 # Stops a particular Amazon Instance
