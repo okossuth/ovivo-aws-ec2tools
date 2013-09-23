@@ -8,6 +8,7 @@ that are not updates via Amazon's YUM repositories. Examples of these are:
 	- uWGSI
 	- uWSGItop
 	- Supervisor
+	- Nginx
 	- Other software listed by `pip freeze`
 """
 
@@ -66,12 +67,15 @@ def host(server, cmd, user):
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
     ssh.connect(hostip,username=user,pkey=privkey)
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
-    val = ssh_stdout.read()
+    if 'nginx' in cmd:
+        val = ssh_stderr.read()
+    else:
+	val = ssh_stdout.read()
     print "Installed version: %s" % val
     return val
    
 def checksw():
-    message = []
+    message = ''
     br = Browser()
     print "Checking librabbitmq..."
     libversion = host(BACKEND, 'source /home/ella/Ella/venv/bin/activate; pip freeze | grep librab', 'ella')
@@ -99,7 +103,7 @@ def checksw():
     libversion = libversion[8:]
     if not version in libversion:
         print (color.RED + "New version of celery available: %s !!\n" + color.END)  % version
-        message = "New version of celery available: %s !!\n" % version
+        message += "New version of celery available: %s !!\n" % version
     else:
 	print "celery version %s up to date \n" % version
     
@@ -114,7 +118,7 @@ def checksw():
     libversion = libversion[15:]
     if not version in libversion:
         print (color.RED + "New version of django-celery available: %s !!\n" + color.END)  % version
-        message = "New version of django-celery available: %s !!\n" % version
+        message += "New version of django-celery available: %s !!\n" % version
     else:
 	print "django-celery version %s up to date \n" % version
     
@@ -128,7 +132,7 @@ def checksw():
 	    version = i[-10:-4]
     if not version in libversion:
         print (color.RED + "New version of uWSGI available: %s !!\n" + color.END)  % version
-        message = "New version of uWSGI available: %s !!\n" % version
+        message += "New version of uWSGI available: %s !!\n" % version
     else:
 	print "uWSGI version %s up to date \n" % version
     
@@ -143,7 +147,7 @@ def checksw():
     libversion = libversion[12:]
     if not version in libversion:
         print (color.RED + "New version of supervisor available: %s !!\n" + color.END)  % version
-        message = "New version of supervisor available: %s !!\n" % version
+        message += "New version of supervisor available: %s !!\n" % version
     else:
 	print "supervisor version %s up to date \n" % version
     
@@ -158,9 +162,29 @@ def checksw():
     libversion = libversion[10:]
     if not version in libversion:
         print (color.RED + "New version of uWSGItop available: %s !!\n" + color.END)  % version
-        message = "New version of uWSGItop available: %s !!\n" % version
+        message += "New version of uWSGItop available: %s !!\n" % version
     else:
 	print "uWSGItop version %s up to date \n" % version
+    
+    print "Checking Nginx..."
+    libversion = host(BACKEND, '/usr/local/nginx/sbin/nginx -v','oskar')
+    print "libversion is %s" % libversion
+    br.open("http://nginx.org/en/download.html")
+    page = br.response().read()
+    data = page.split('\n')
+
+    array = data[14].split(' ')
+    for i in array:
+        if 'h4>Stable' in i:
+	    pos = array.index(i)    
+    version = array[pos+6]
+    version = version[42:-6]
+    libversion = libversion[21:]
+    if not version in libversion:
+        print (color.RED + "New version of Nginx available: %s !!\n" + color.END)  % version
+        message += "New version of Nginx available: %s !!\n" % version
+    else:
+	print "Nginx version %s up to date \n" % version
     
     if len(message) >= 1:
         print message
