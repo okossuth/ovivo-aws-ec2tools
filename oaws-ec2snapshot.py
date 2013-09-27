@@ -98,7 +98,8 @@ def snaplist(args):
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
-        print 'Listing all Ovivo snapshots'
+        print color.BLUE + 'Listing all Ovivo snapshots ' + color.END
+	print '------------------------------ \n'
         snaps = conn.get_all_snapshots(owner=AWSACCID)
         for i in snaps:
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
@@ -121,7 +122,7 @@ def delsnap(args):
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
-        print "You have to pass the snapshot ID of the snapshot to be deleted"
+        print 'You have to pass the snapshot ID of the snapshot to be deleted with --snapshotid="snapid"'
 	raise SystemExit(1)
     else:
 	try:
@@ -138,7 +139,7 @@ def delimage(args):
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.imageid == "" or args.imageid is None:
-        print "You have to pass the image ID of the image to be deleted"
+        print 'You have to pass the image ID of the image to be deleted with --imageid="imgid"'
 	raise SystemExit(1)
     else:
 	try:
@@ -167,7 +168,7 @@ def create_image(args):
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
-        print "You have to pass the snapshot ID used to create the image with --snapshotid"
+        print 'You have to pass the snapshot ID used to create the image with --snapshotid="snapid"'
 	raise SystemExit(1)
     else:
 	namei = raw_input("Enter name of image: ")
@@ -198,10 +199,9 @@ def snapshot(args):
 	print instance.id
         volumes = conn.get_all_volumes(filters={'attachment.instance-id': instance.id})
 	for i in volumes:
-	    #vol = i[7:]
 	    print str(i)[7:]
-	#print "Freezing filesytem..."
-	#run('sudo fsfreeze -f / && sleep 30 && fsfreeze -u /')
+        print instance.tags['Name']
+	print "Creating snapshot..."
 	if instance.state == "running":
 	    host = instance.ip_address
 	    ssh = paramiko.SSHClient()
@@ -209,17 +209,30 @@ def snapshot(args):
 	    privkey = paramiko.RSAKey.from_private_key_file (sshkey)
 	    ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
 	    ssh.connect(host,username='oskar',pkey=privkey)
-	    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('sync')
-	    print "output", ssh_stdout.read() 
-        else:
-	    print "Ovivo is stopped or IPs not available"
-	    pass
-        print instance.tags['Name']
-	print "Creating snapshot..."
-	snapshot = conn.create_snapshot(str(volumes[0])[7:], args.instance)
-	#print "Thawing filesystem..."
-        #run('sudo fsfreeze -u /')
-        print "Snapshot %s created!" % snapshot
+	    chan = ssh.get_transport().open_session()
+	    chan.get_pty()
+	    if args.instance == "Production DB Master":
+		print "Freezing database filesystem..."
+	        chan.exec_command('sudo fsfreeze -f /var/lib/pgsql9 ; touch /tmp/kkk')
+	        for i in volumes:
+	            snapshot = conn.create_snapshot(str(i)[7:], args.instance)
+                    print "Snapshot %s created!" % snapshot
+	        print "Thawing database filesystem..."
+	        chan = ssh.get_transport().open_session()
+	        chan.get_pty()
+	        chan.exec_command('sudo fsfreeze -u /var/lib/pgsql9 ; touch /tmp/roor')
+	    else:    
+	        chan.exec_command('sudo sync')
+	        for i in volumes:
+	            snapshot = conn.create_snapshot(str(i)[7:], args.instance)
+                    print "Snapshot %s created!" % snapshot
+	else:    
+	    print "Ovivo instance is stopped or IPs not available"
+	    for i in volumes:
+	        snapshot = conn.create_snapshot(str(i)[7:], args.instance)
+                print "Snapshot %s created!" % snapshot
+            
+        print "Snapshot creation process finished..." 
 
 
 if __name__ == '__main__':
