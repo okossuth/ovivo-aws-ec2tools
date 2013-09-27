@@ -20,7 +20,7 @@ from boto.ec2.blockdevicemapping import EBSBlockDeviceType, BlockDeviceMapping
 from boto.exception import EC2ResponseError
 
 REGION="eu-west-1"
-#REGION="us-east-1"
+REGIONB="us-east-1"
 VPCID_EUWEST="sg-cb6764bf"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
@@ -108,6 +108,28 @@ def snaplist(args):
 	for i in snaps:
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
     print	   
+
+
+# Copy snapshots from one region to another
+@arg('--snapshotid', help = 'Snapshot ID of the snapshot to copy',)
+def cpsnap(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGIONB,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.snapshotid == "" or args.snapshotid is None:
+        print 'You have to pass the snapshot ID of the snapshot to be copied with --snapshotid="snapid"'
+	raise SystemExit(1)
+    else:
+	try:
+	    print ""
+            sconn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+	    snaps = sconn.get_all_snapshots(snapshot_ids=[args.snapshotid])
+	    for i in snaps:
+	        descr = "[Copied from %s] %s" % (REGION, i.description)
+	    conn.copy_snapshot(REGION, args.snapshotid, description=descr)
+	    print "Snapshot %s copied successfully to region %s" % (args.snapshotid, REGIONB)
+	except EC2ResponseError:
+            print "Error when trying to copy snapshot %s" % args.snapshotid
 
 # Snapshot all instances on Amazon account
 def snapall(args):
@@ -237,6 +259,6 @@ def snapshot(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap])
+    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap, cpsnap])
     p.dispatch()
 
