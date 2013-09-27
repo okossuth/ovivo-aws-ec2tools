@@ -30,7 +30,7 @@ BACKEND_EIP="54.247.108.93"
 CELERY_EIP="46.137.79.20"
 MQREDIS_EIP="54.246.99.180"
 DBMASTER_EIP="54.247.108.126"
-CELERYSMS_EIP="54.228.206.75"
+CELERYMSG_EIP="54.228.206.75"
 CELERYLP_EIP="54.228.206.174"
 #OUPDATES_EIP="54.228.207.27"
 AWSCREDS="./awscreds.txt"
@@ -299,8 +299,8 @@ def stopinfr(args):
             dbmaster_id = instance
 	elif codinstance.tags['Name'] == "Ovivo Updates":
             oupdates_id = instance
-	elif codinstance.tags['Name'] == "Production CelerySMS":
-            celerysms_id = instance
+	elif codinstance.tags['Name'] == "Production CeleryMessages": 
+            celerymsg_id = instance
 	elif codinstance.tags['Name'] == "Production CeleryLowPrio":
             celerylp_id = instance
 	else:
@@ -313,7 +313,7 @@ def stopinfr(args):
     while state !="running":
         reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
 	state = reservations[0].instances[0].state
-
+    
     print "Ovivo Updates Instance is running"
     #OUPDATES_EIP = conn.allocate_address()
     #conn.associate_address(oupdates_id, OUPDATES_EIP)
@@ -346,14 +346,14 @@ def stopinfr(args):
     #	state = reservations[0].instances[0].state
     #print "Production CeleryLowPrio instance stopped"
     #print
-    print "Stopping Production CelerySMS instance..."
-    conn.stop_instances(instance_ids=[celerysms_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
+    print "Stopping Production CeleryMessages instance..."
+    conn.stop_instances(instance_ids=[celerymsg_id])
+    #reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryMessages"});
     #state = reservations[0].instances[0].state
     #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
+    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryMessages"});
     #	state = reservations[0].instances[0].state
-    #print "Production CelerySMS instance stopped"
+    #print "Production CeleryMessages instance stopped"
     #print
     print "Stopping Production Celery instance..."
     conn.stop_instances(instance_ids=[celery_id])
@@ -425,8 +425,8 @@ def startinfr(args):
             dbmaster_id = instance
 	elif codinstance.tags['Name'] == "Ovivo Updates":
             oupdates_id = instance
-	elif codinstance.tags['Name'] == "Production CelerySMS":
-            celerysms_id = instance
+	elif codinstance.tags['Name'] == "Production CeleryMessages":
+            celerymsg_id = instance
 	elif codinstance.tags['Name'] == "Production CeleryLowPrio":
             celerylp_id = instance
 	else:
@@ -497,16 +497,16 @@ def startinfr(args):
     print "EIP %s added succesfully to Instance %s \n" % (CELERY_EIP, "Production Celery")
     print "Production Celery instance running"
     
-    print "Starting Production CelerySMS instance..."
-    conn.start_instances(instance_ids=[celerysms_id])
-    reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
+    print "Starting Production CeleryMessages instance..."
+    conn.start_instances(instance_ids=[celerymsg_id])
+    reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryMessages"});
     state = reservations[0].instances[0].state
     while state !="running":
-        reservations = conn.get_all_instances(filters={"tag:Name": "Production CelerySMS"});
+        reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryMessages"});
 	state = reservations[0].instances[0].state
-    conn.associate_address(celerysms_id, CELERYSMS_EIP)
-    print "EIP %s added succesfully to Instance %s \n" % (CELERYSMS_EIP, "Production CelerySMS")
-    print "Production CelerySMS instance running"
+    conn.associate_address(celerymsg_id, CELERYMSG_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (CELERYMSG_EIP, "Production CeleryMessages")
+    print "Production CeleryMessages instance running"
     
     print "Starting Production CeleryLowPrio instance..."
     conn.start_instances(instance_ids=[celerylp_id])
