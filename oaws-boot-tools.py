@@ -98,6 +98,10 @@ def ec2list():
     print
     for i in reservations:
         instance = i.instances[0]
+	try:
+	    instance.tags['Name']
+	except KeyError: 
+            instance.tags['Name'] = 'empty name'
 	print "Instance: %s , Name: %s , Type: %s , State: %s " % (instance.id,instance.tags['Name'],instance.instance_type, instance.state)
     print
 
