@@ -207,6 +207,33 @@ def create_image(args):
 	except EC2ResponseError:
 	    print "Image creation error"
 
+# Launch Amazon image from image
+@arg('--imageid', help = 'Image ID to launch image from',)
+@arg('--itype'  , help = 'Type of Amazon instance to launch',)
+def launchimg(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.itype == "" or args.imageid is None:
+        print 'You have to pass the type of instance used to launch the image with --itype="itype"'
+	raise SystemExit(1)
+    if args.imageid == "" or args.imageid is None:
+        print 'You have to pass the image ID used to launch the image with --imageid="imgid"'
+	raise SystemExit(1)
+    else:
+	try:
+            ret=conn.run_instances(args.imageid,min_count=1,max_count=1,instance_type=args.itype, \
+		    security_groups=['default'],kernel_id='aki-71665e05')
+	    instance = ret.instances[0]
+	    status = instance.update()
+	    while status == 'pending':
+	        status = instance.update()
+            if status == 'running':
+	        instance.add_tag("Name","Empty")
+	    print "Image launch successful"
+	except EC2ResponseError:
+	    print "Image launch error"
+
 # Create snapshot from a particular Amazon instance
 @arg('--instance', help = 'Instance to snapshot',)
 def snapshot(args):
@@ -259,6 +286,6 @@ def snapshot(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap, cpsnap])
+    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap, cpsnap, launchimg])
     p.dispatch()
 
