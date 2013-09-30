@@ -129,13 +129,16 @@ def checksw():
     data = page.split('\n')
     for i in data:
         if 'href="/pypi/uWSGI/' in i:
-	    version = i[-10:-4]
+	    if len(i) > 57:
+	        version = i[-12:-4]
+	    else:
+		version = i[-10:-4]
     if not version in libversion:
         print (color.RED + "New version of uWSGI available: %s !!\n" + color.END)  % version
         message += "New version of uWSGI available: %s !!\n" % version
     else:
 	print "uWSGI version %s up to date \n" % version
-    
+   
     print "Checking supervisor..."
     libversion = host(BACKEND, 'pip freeze | grep supervisor','oskar')
     br.open("https://pypi.python.org/pypi/supervisor")
