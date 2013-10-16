@@ -24,6 +24,8 @@ REGIONB="us-east-1"
 VPCID_EUWEST="sg-cb6764bf"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
+NUMSNAP=4
+
 
 class color:
     PURPLE = '\033[95m'
@@ -131,11 +133,6 @@ def cpsnap(args):
 	except EC2ResponseError:
             print "Error when trying to copy snapshot %s" % args.snapshotid
 
-# Snapshot all instances on Amazon account
-def snapall(args):
-    AWSAKEY,AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    print "snap all"
 
 # Delete a particular snapshot 
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
@@ -166,7 +163,7 @@ def delimage(args):
     else:
 	try:
 	    ret = conn.deregister_image(args.imageid)
-	    print "Image %s deleted successfuly" % args.imageid
+	    print "Image %s deleted successfully" % args.imageid
 	except EC2ResponseError:
 	    print "Error when trying to delete image %s" % args.imageid
 
@@ -236,13 +233,22 @@ def launchimg(args):
 
 # Create snapshot from a particular Amazon instance
 @arg('--instance', help = 'Instance to snapshot',)
-def snapshot(args):
+def snapshot(args, *foo):
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    if args.instance == "" or args.instance is None:
-        print 'You have to pass the name of the instance to snapshot using --instance="name"'
-	raise SystemExit(1)
-    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    try:
+        if args.instance == "" or args.instance is None:
+            print 'You have to pass the name of the instance to snapshot using --instance="name"'
+	    raise SystemExit(1)
+    except AttributeError:    
+	print foo 
+    if  len(foo) == 0:
+        name = args.instance
+	print name
+    else:
+	name = foo[0].encode('ascii')
+	print name
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % name})
     for i in reservations:
         instance = i.instances[0]
 	print instance.id
@@ -260,11 +266,11 @@ def snapshot(args):
 	    ssh.connect(host,username='oskar',pkey=privkey)
 	    chan = ssh.get_transport().open_session()
 	    chan.get_pty()
-	    if args.instance == "Production DB Master":
+	    if name == "Production DB Master":
 		print "Freezing database filesystem..."
 	        chan.exec_command('sudo fsfreeze -f /var/lib/pgsql9 ; touch /tmp/kkk')
 	        for i in volumes:
-	            snapshot = conn.create_snapshot(str(i)[7:], args.instance)
+	            snapshot = conn.create_snapshot(str(i)[7:], name)
                     print "Snapshot %s created!" % snapshot
 	        print "Thawing database filesystem..."
 	        chan = ssh.get_transport().open_session()
@@ -273,15 +279,26 @@ def snapshot(args):
 	    else:    
 	        chan.exec_command('sudo sync')
 	        for i in volumes:
-	            snapshot = conn.create_snapshot(str(i)[7:], args.instance)
+	            snapshot = conn.create_snapshot(str(i)[7:], name)
                     print "Snapshot %s created!" % snapshot
 	else:    
 	    print "Ovivo instance is stopped or IPs not available"
 	    for i in volumes:
-	        snapshot = conn.create_snapshot(str(i)[7:], args.instance)
+	        snapshot = conn.create_snapshot(str(i)[7:], name)
                 print "Snapshot %s created!" % snapshot
             
         print "Snapshot creation process finished..." 
+
+# Snapshot all instances on Amazon account
+def snapall(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % "Staging Backend"})
+    for i in reservations:
+       instance = i.instances[0]
+       param = instance.tags['Name']
+       snapshot(None, param)
+    
 
 
 if __name__ == '__main__':
