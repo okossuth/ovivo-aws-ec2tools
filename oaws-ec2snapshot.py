@@ -24,6 +24,7 @@ REGIONB="us-east-1"
 VPCID_EUWEST="sg-cb6764bf"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
+DBMASTER_TEST="i-803ea5cc"
 NUMSNAP=4
 
 
@@ -93,9 +94,48 @@ def _getawsaccid():
 	    pos = i
     return aws_accid[pos+2:-2]
 
+# Rotate Snapshots
+def rotatesnap(args):
+    temp = []
+    temp_extra = []
+    AWSAKEY,AWSSKEY = _getcreds()
+    AWSACCID = _getawsaccid()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    snaps = conn.get_all_snapshots(filters = {"description": args})
+    for i in snaps:
+        print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
+	if i.volume_size != 8:
+	    print "Snapshot is from an extra volume"
+	    temp_extra.append(i.id)
+	else:
+            print "Snapshot is from normal volume"
+            temp.append(i.id)
+    if len(temp) < 2:
+            print "There is only one snapshot for this instance. Aborting rotate..."
+    else:    	
+        temp.pop()
+        for i in temp:
+	    name = i.encode('ascii')
+            try:
+                conn.delete_snapshot(name)
+	    except EC2ResponseError:
+	        print "Error deleting snapshot"
+    if len(temp_extra) < 2:
+        print "There is only one DB snapshot for this instance. Aborting rotate..."
+    else:    	
+        temp_extra.pop()
+        for i in temp_extra:
+	    name = i.encode('ascii')
+            try:
+                conn.delete_snapshot(name)
+	    except EC2ResponseError:
+	        print "Error deleting snapshot"
+    print temp
+
+
 # List all snapshots in Amazon account or particular instance
 @arg('--instance', help = 'Instance to list snapshots',)
-def snaplist(args):
+def snaplist(args, ):
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -293,12 +333,17 @@ def snapshot(args, *foo):
 def snapall(args):
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % "Staging Backend"})
+    #reservations = conn.get_all_instances(filters={"tag:Name": "%s" % "Staging Backend"})
+    reservations = conn.get_all_instances()
     for i in reservations:
        instance = i.instances[0]
-       param = instance.tags['Name']
-       snapshot(None, param)
-    
+       sec_instance = instance.groups[0]
+       if sec_instance.id == VPCID_EUWEST and instance.id != DBMASTER_TEST  :
+           param = instance.tags['Name']
+           rotatesnap(param)
+           snapshot(None, param)
+       else:
+	   pass
 
 
 if __name__ == '__main__':
