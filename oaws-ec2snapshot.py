@@ -25,7 +25,6 @@ VPCID_EUWEST="sg-cb6764bf"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
 DBMASTER_TEST="i-803ea5cc"
-NUMSNAP=4
 
 
 class color:
@@ -130,7 +129,6 @@ def rotatesnap(args):
                 conn.delete_snapshot(name)
 	    except EC2ResponseError:
 	        print "Error deleting snapshot"
-    print temp
 
 
 # List all snapshots in Amazon account or particular instance
@@ -172,6 +170,27 @@ def cpsnap(args):
 	    print "Snapshot %s copied successfully to region %s" % (args.snapshotid, REGIONB)
 	except EC2ResponseError:
             print "Error when trying to copy snapshot %s" % args.snapshotid
+
+# Deletes all snapshots from an instance
+@arg('--instance', help = 'Instance name to delete snapshots from',)
+def delsnapall(args):
+    AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print 'You have to pass the instance name of the instance to delete snapshots from with --instance="instance_name"'
+	raise SystemExit(1)
+    else:
+        snaps = conn.get_all_snapshots(filters = {"description": args.instance})
+	if len(snaps) == 0:
+	    print "No snapshots available or Instance ID is wrong. Exiting..."
+	    raise SystemExit(1)
+        for i in snaps:
+	    try:
+	        print ""
+	        conn.delete_snapshot(i.id)
+	        print "Snapshot deleted successfully"
+	    except EC2ResponseError:
+                print "Error when trying to delete snapshot %s" % i.id
 
 
 # Delete a particular snapshot 
@@ -284,10 +303,8 @@ def snapshot(args, *foo):
 	print foo 
     if  len(foo) == 0:
         name = args.instance
-	print name
     else:
 	name = foo[0].encode('ascii')
-	print name
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % name})
     for i in reservations:
         instance = i.instances[0]
@@ -333,7 +350,6 @@ def snapshot(args, *foo):
 def snapall(args):
     AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    #reservations = conn.get_all_instances(filters={"tag:Name": "%s" % "Staging Backend"})
     reservations = conn.get_all_instances()
     for i in reservations:
        instance = i.instances[0]
@@ -348,6 +364,6 @@ def snapall(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap, cpsnap, launchimg])
+    p.add_commands([snaplist, snapshot, snapall, create_image, imagelist, delimage, delsnap, cpsnap, launchimg, delsnapall])
     p.dispatch()
 
