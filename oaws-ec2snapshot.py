@@ -25,7 +25,7 @@ VPCID_EUWEST="sg-cb6764bf"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
 DBMASTER_TEST="i-803ea5cc"
-
+NUM_SNAPS = 2
 
 class color:
     PURPLE = '\033[95m'
@@ -97,6 +97,7 @@ def _getawsaccid():
 def rotatesnap(args):
     temp = []
     temp_extra = []
+    db_sem = 0
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -105,11 +106,12 @@ def rotatesnap(args):
         print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
 	if i.volume_size != 8:
 	    print "Snapshot is from an extra volume"
+	    db_sem = 1
 	    temp_extra.append(i.id)
 	else:
             print "Snapshot is from normal volume"
             temp.append(i.id)
-    if len(temp) < 2:
+    if len(temp) < NUM_SNAPS:
             print "There is only one snapshot for this instance. Aborting rotate..."
     else:    	
         temp.pop()
@@ -119,9 +121,9 @@ def rotatesnap(args):
                 conn.delete_snapshot(name)
 	    except EC2ResponseError:
 	        print "Error deleting snapshot"
-    if len(temp_extra) < 2:
+    if len(temp_extra) < NUM_SNAPS and db_sem == 1:
         print "There is only one DB snapshot for this instance. Aborting rotate..."
-    else:    	
+    elif len(temp_extra) >= NUM_SNAPS and db_sem == 1:    	
         temp_extra.pop()
         for i in temp_extra:
 	    name = i.encode('ascii')
@@ -129,7 +131,9 @@ def rotatesnap(args):
                 conn.delete_snapshot(name)
 	    except EC2ResponseError:
 	        print "Error deleting snapshot"
-
+    
+    else:
+        pass
 
 # List all snapshots in Amazon account or particular instance
 @arg('--instance', help = 'Instance to list snapshots',)
