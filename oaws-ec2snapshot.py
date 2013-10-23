@@ -192,7 +192,10 @@ def cpsnap(args):
 	                else:
                             print "Snapshot is from normal volume"
                             temp.append(i.id)
-                    snap = temp.pop()         
+                    if len(temp) > 1:
+                        snap = temp.pop()   
+		    else:
+			snap = temp
 	            descr = "[Copied from %s] %s" % (REGION, i.description)
 		    try:
 			conn.copy_snapshot(REGION, snap, description=descr)
