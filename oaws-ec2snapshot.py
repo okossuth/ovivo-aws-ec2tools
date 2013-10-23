@@ -174,7 +174,7 @@ def cpsnap(args):
 	try:
 	    print ""
             sconn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-	    if args.snapshotid != "allprod":
+	    if args.snapshotid != "prodbase" and  args.snapshotid !="prodcelery":
 	        snaps = sconn.get_all_snapshots(snapshot_ids=[args.snapshotid])
 	        for i in snaps:
 	            descr = "[Copied from %s] %s" % (REGION, i.description)
@@ -182,7 +182,10 @@ def cpsnap(args):
 	        print "Snapshot %s copied successfully to region %s" % (args.snapshotid, REGIONB)
 	    else:
 		prodlist = []
-		prodlist.extend((DBMASTER_ID, MQREDIS_ID, BACKEND_ID, CELERY_ID, CELERYLP_ID, CELERYSMS_ID))
+		if args.snapshotid == "prodbase":
+		    prodlist.extend((DBMASTER_ID, MQREDIS_ID, BACKEND_ID))
+	        else:
+		    prodlist.extend((CELERY_ID, CELERYLP_ID, CELERYSMS_ID))
 		for i in prodlist:
 		    print i
 		    snaps = sconn.get_all_snapshots(filters = {"description": i})
@@ -198,7 +201,7 @@ def cpsnap(args):
 			snap = temp
 	            descr = "[Copied from %s] %s" % (REGION, i.description)
 		    try:
-			conn.copy_snapshot(REGION, snap, description=descr)
+		        conn.copy_snapshot(REGION, snap, description=descr)
 	                print "Snapshot %s copied successfully to region %s" % (snap, REGIONB)
 	            except EC2ResponseError:
                         print "Error when trying to copy snapshot %s" % snap
