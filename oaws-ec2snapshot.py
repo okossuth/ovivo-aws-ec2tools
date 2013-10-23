@@ -164,8 +164,6 @@ def snaplist(args, ):
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to copy',)
 def cpsnap(args):
     temp = []
-    temp_extra = []
-    db_sem = 0
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGIONB,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -191,8 +189,6 @@ def cpsnap(args):
 	            for i in snaps:
 	                if i.volume_size != 8:
 	                    print "Snapshot is from an extra volume"
-	     		    db_sem = 1
-	                    temp_extra.append(i.id)
 	                else:
                             print "Snapshot is from normal volume"
                             temp.append(i.id)
@@ -203,17 +199,7 @@ def cpsnap(args):
 	                print "Snapshot %s copied successfully to region %s" % (snap, REGIONB)
 	            except EC2ResponseError:
                         print "Error when trying to copy snapshot %s" % snap
-	            if db_sem == 1:
-			snap = temp_extra.pop()
-	                descr = "[Copied from %s] %s" % (REGION, i.description)
-			try:
-	                    conn.copy_snapshot(REGION, snap, description=descr)
-	                    print "Snapshot %s copied successfully to region %s" % (snap, REGIONB)
-	                except EC2ResponseError:
-                            print "Error when trying to copy snapshot %s" % snap
 		    temp[:] = []
-		    temp_extra[:] = []
-		    db_sem = 0
 	except EC2ResponseError:
             print "Error when trying to copy snapshot %s" % args.snapshotid
 
