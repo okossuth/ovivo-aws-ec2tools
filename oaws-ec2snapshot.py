@@ -25,6 +25,12 @@ VPCID_EUWEST="sg-cb6764bf"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
 DBMASTER_TEST="i-803ea5cc"
+DBMASTER_ID = "Production DB Master"
+MQREDIS_ID = "Production MQRedis"
+BACKEND_ID = "Production Backend"
+CELERY_ID = "Production Celery"
+CELERYLP_ID = "Production CeleryLowPrio"
+CELERYSMS_ID = "Production CeleryMessages"
 NUM_SNAPS = 2
 
 class color:
@@ -157,6 +163,9 @@ def snaplist(args, ):
 # Copy snapshots from one region to another
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to copy',)
 def cpsnap(args):
+    temp = []
+    temp_extra = []
+    db_sem = 0
     AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGIONB,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -167,11 +176,44 @@ def cpsnap(args):
 	try:
 	    print ""
             sconn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-	    snaps = sconn.get_all_snapshots(snapshot_ids=[args.snapshotid])
-	    for i in snaps:
-	        descr = "[Copied from %s] %s" % (REGION, i.description)
-	    conn.copy_snapshot(REGION, args.snapshotid, description=descr)
-	    print "Snapshot %s copied successfully to region %s" % (args.snapshotid, REGIONB)
+	    if args.snapshotid != "allprod":
+	        snaps = sconn.get_all_snapshots(snapshot_ids=[args.snapshotid])
+	        for i in snaps:
+	            descr = "[Copied from %s] %s" % (REGION, i.description)
+	        conn.copy_snapshot(REGION, args.snapshotid, description=descr)
+	        print "Snapshot %s copied successfully to region %s" % (args.snapshotid, REGIONB)
+	    else:
+		prodlist = []
+		prodlist.extend((DBMASTER_ID, MQREDIS_ID, BACKEND_ID, CELERY_ID, CELERYLP_ID, CELERYSMS_ID))
+		for i in prodlist:
+		    print i
+		    snaps = sconn.get_all_snapshots(filters = {"description": i})
+	            for i in snaps:
+	                if i.volume_size != 8:
+	                    print "Snapshot is from an extra volume"
+	     		    db_sem = 1
+	                    temp_extra.append(i.id)
+	                else:
+                            print "Snapshot is from normal volume"
+                            temp.append(i.id)
+                    snap = temp.pop()         
+	            descr = "[Copied from %s] %s" % (REGION, i.description)
+		    try:
+			conn.copy_snapshot(REGION, snap, description=descr)
+	                print "Snapshot %s copied successfully to region %s" % (snap, REGIONB)
+	            except EC2ResponseError:
+                        print "Error when trying to copy snapshot %s" % snap
+	            if db_sem == 1:
+			snap = temp_extra.pop()
+	                descr = "[Copied from %s] %s" % (REGION, i.description)
+			try:
+	                    conn.copy_snapshot(REGION, snap, description=descr)
+	                    print "Snapshot %s copied successfully to region %s" % (snap, REGIONB)
+	                except EC2ResponseError:
+                            print "Error when trying to copy snapshot %s" % snap
+		    temp[:] = []
+		    temp_extra[:] = []
+		    db_sem = 0
 	except EC2ResponseError:
             print "Error when trying to copy snapshot %s" % args.snapshotid
 
