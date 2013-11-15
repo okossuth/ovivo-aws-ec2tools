@@ -319,9 +319,6 @@ def stopinfr(args):
 	state = reservations[0].instances[0].state
     
     print "Ovivo Updates Instance is running"
-    #OUPDATES_EIP = conn.allocate_address()
-    #conn.associate_address(oupdates_id, OUPDATES_EIP)
-    #print OUPDATES_EIP
     OUPDATES_DNS = reservations[0].instances[0].public_dns_name
     print OUPDATES_DNS
     print "Checking if Ovivo Updates is ready for connections..."
@@ -331,7 +328,6 @@ def stopinfr(args):
     
     print "Connected to Ovivo Updates address %s on port %s \n" % (OUPDATES_DNS,"80")
 
-   # conn.disassociate_address(OUPDATES_EIP,oupdates_id)
     conn.disassociate_address(BACKEND_EIP,backend_id)
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Production Backend")
     conn.associate_address(oupdates_id, BACKEND_EIP)
@@ -343,69 +339,32 @@ def stopinfr(args):
     print
     print "Stopping Production CeleryLowPrio instance..."
     conn.stop_instances(instance_ids=[celerylp_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryLowPrio"});
-    #state = reservations[0].instances[0].state
-    #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryLowPrio"});
-    #	state = reservations[0].instances[0].state
-    #print "Production CeleryLowPrio instance stopped"
-    #print
     print "Stopping Production CeleryMessages instance..."
     conn.stop_instances(instance_ids=[celerymsg_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryMessages"});
-    #state = reservations[0].instances[0].state
-    #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production CeleryMessages"});
-    #	state = reservations[0].instances[0].state
-    #print "Production CeleryMessages instance stopped"
-    #print
     print "Stopping Production Celery instance..."
     conn.stop_instances(instance_ids=[celery_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
-    #state = reservations[0].instances[0].state
-    #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production Celery"});
-    #	state = reservations[0].instances[0].state
-    #print "Production Celery instance stopped"
-    #print
     print "Stopping Production Backend instance..."
     conn.stop_instances(instance_ids=[backend_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
-    #state = reservations[0].instances[0].state
-    #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production Backend"});
-    #	state = reservations[0].instances[0].state
-    #print "Production Backend instance stopped"
-    #print
     print "Stopping Production MQRedis instance..."
     conn.stop_instances(instance_ids=[mqredis_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
-    #state = reservations[0].instances[0].state
-    #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production MQRedis"});
-    #	state = reservations[0].instances[0].state
-    #print "Production MQRedis instance stopped"
-    #print
     print "Stopping Production DB Master instance..."
     conn.stop_instances(instance_ids=[dbmaster_id])
-    #reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
-    #state = reservations[0].instances[0].state
-    #while state !="stopped":
-    #    reservations = conn.get_all_instances(filters={"tag:Name": "Production DB Master"});
-    #	state = reservations[0].instances[0].state
-    #print "Production DB Master instance stopped"
     print "Checking if the Production infrastructure is completely halted..."
+    
     ids = conn.get_all_instances()
     for i in ids:
         codinstance = i.instances[0]
-        state = codinstance.state
-	if state !="stopped":
-	    print "Instance %s state is still %s, waiting to be completely stopped..." % (codinstance.tags['Name'],codinstance.state)
+	if codinstance.tags['Name'] == "Production Celery" or codinstance.tags['Name'] == "Production Backend" or \
+           codinstance.tags['Name'] == "Production CeleryLowPrio" or codinstance.tags['Name'] == "Production CeleryMessages" or codinstance.tags['Name'] == "Production DB Master" or codinstance.tags['Name'] == "Production MQRedis": 
+            state = codinstance.state
+            if state !="stopped":
+	        print "Instance %s state is still %s, waiting to be completely stopped..." % (codinstance.tags['Name'],codinstance.state)
             while state !="stopped":
                 res = conn.get_all_instances(codinstance.id);
 	        state = res[0].instances[0].state
-	print "Instance %s state is %s" % (codinstance.tags['Name'],codinstance.state)
-
+	        print "Instance %s state is %s" % (codinstance.tags['Name'],codinstance.state)
+        else:
+	    pass
     print
     print "Ovivo AWS Infrastructure stopped"
 
