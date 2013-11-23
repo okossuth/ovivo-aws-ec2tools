@@ -214,6 +214,8 @@ def start(args):
 	print "Error"
     if args.eip is not None:
         conn.associate_address(instance.id, args.eip)
+    else:
+	print "Public DNS name is: %s " % reservations[0].instances[0].public_dns_name
     
 
 # List all Elastic IPs added to the AWS Account
