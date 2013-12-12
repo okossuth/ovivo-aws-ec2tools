@@ -48,6 +48,7 @@ AWSSKEY = pylibc.awsskey()
 #@arg('--instance',help='Instance ID of the instance to start',)
 #@arg('--eip',help='EIP to associate',)
 def start():
+    
     sche = ["Staging Backend", "Backbone.js devserver"]
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     for x in sche:
@@ -68,6 +69,12 @@ def start():
 		conn.associate_address(instance.id, DEV_EIP)
         else:
 	    print "Error"
+    
+    fp = open("/var/log/scheduler.txt", 'r+')
+    fp.seek(0)
+    i = "Instances started.."
+    fp.write(i)
+    fp.close()
 
 def stop():
     sche = ["Staging Backend", "Backbone.js devserver"]
@@ -85,6 +92,12 @@ def stop():
             print "Instance stopped, checks: %s" % reservations[0].instances[0].monitoring_state
         else:
 	    print "Running"
+    
+    fp = open("/var/log/scheduler.txt", 'r+')
+    fp.seek(0)
+    i = "Instances stopped.."
+    fp.write(i)
+    fp.close()
 
 def status():
     sche = ["Staging Backend", "Backbone.js devserver"]
