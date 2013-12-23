@@ -8,8 +8,8 @@ import feedparser
 import smtplib
 from email.mime.text import MIMEText
 
-def sendalert():
-    message = "Amazon SES is having technical difficulties..."
+def sendalert(status):
+    message = status
     me = "sysadminops@ovivo.dk"
     to = ["okossuth@gmail.com", "jh@ovivo.dk", "af@ovivo.dk"]
     #to = "okossuth@gmail.com"
@@ -32,7 +32,7 @@ def main():
     status = data.entries[0].title + ' || ' + data.entries[0].published
     if not "normally" in status:
         print "Amazon SES is having problems..."
-	sendalert()
+	sendalert(status)
     else:
         print "Amazon SES is working fine..."
 
