@@ -61,23 +61,26 @@ try:
 except ImportError:
     check_library('argh')
 
+# AWS Credentials retrieval using encrypted C shared library ##
 
-def _getcreds():
-    creds = []
-    f = open(AWSCREDS, "r")
-    c = f.readlines()
-    f.seek(0)
-    aws_akey = c[0]
-    aws_skey = c[1]
-    for i in range(len(aws_akey)):
-        if aws_akey[i] == "=":
-	    pos = i
-    for i in range(len(aws_skey)):
-        if aws_skey[i] == "=":
-	    pos = i
-    creds.append(aws_akey[pos+2:-2])
-    creds.append(aws_skey[pos+2:-2])
-    return tuple(creds)
+import os, pwd, grp
+f=open('/tmp/.uwsgi.lock', 'w+')
+f.close()
+uid = pwd.getpwnam('oskar').pw_uid
+gid = grp.getgrnam('oskar').gr_gid
+os.chown('/tmp/.uwsgi.lock', uid, gid)
+
+import ctypes
+from ctypes import CDLL
+
+pylibc = CDLL("/home/ella/Ella/ella/awsenckeys.so")
+pylibc.awsakey.restype = ctypes.c_char_p
+pylibc.awsskey.restype = ctypes.c_char_p
+
+AWSAKEY = pylibc.awsakey()
+AWSSKEY = pylibc.awsskey()
+
+######################################################
 
 def _getkeypem():
     f = open(AWSCREDS, "r")
@@ -100,13 +103,14 @@ def _getawsaccid():
     return aws_accid[pos+2:-2]
 
 # Rotate Snapshots
+@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def rotatesnap(args):
     temp = []
     temp_extra = []
     db_sem = 0
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     snaps = conn.get_all_snapshots(filters = {"description": args})
     for i in snaps:
         print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
@@ -143,10 +147,11 @@ def rotatesnap(args):
 
 # List all snapshots in Amazon account or particular instance
 @arg('--instance', help = 'Instance to list snapshots',)
+@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snaplist(args, ):
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print color.BLUE + 'Listing all Ovivo snapshots ' + color.END
 	print '------------------------------ \n'
@@ -164,7 +169,7 @@ def snaplist(args, ):
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to copy',)
 def cpsnap(args):
     temp = []
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGIONB,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
@@ -211,9 +216,10 @@ def cpsnap(args):
 
 # Deletes all snapshots from an instance
 @arg('--instance', help = 'Instance name to delete snapshots from',)
+@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def delsnapall(args):
-    AWSAKEY,AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    #AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print 'You have to pass the instance name of the instance to delete snapshots from with --instance="instance_name"'
 	raise SystemExit(1)
@@ -233,10 +239,11 @@ def delsnapall(args):
 
 # Delete a particular snapshot 
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
+@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def delsnap(args):
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
         print 'You have to pass the snapshot ID of the snapshot to be deleted with --snapshotid="snapid"'
 	raise SystemExit(1)
@@ -251,7 +258,7 @@ def delsnap(args):
 # Delete a particular Amazon image
 @arg('--imageid', help = 'Image ID of the image to delete',)
 def delimage(args):
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.imageid == "" or args.imageid is None:
@@ -266,7 +273,7 @@ def delimage(args):
 
 # List all images of Amazon account
 def imagelist(args):
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     images = conn.get_all_images(owners=AWSACCID)
@@ -280,7 +287,7 @@ def imagelist(args):
 # Create Amazon image from snapshot
 @arg('--snapshotid', help = 'Snapshot ID to create image from',)
 def create_image(args):
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
@@ -305,7 +312,7 @@ def create_image(args):
 @arg('--imageid', help = 'Image ID to launch image from',)
 @arg('--itype'  , help = 'Type of Amazon instance to launch',)
 def launchimg(args):
-    AWSAKEY,AWSSKEY = _getcreds()
+    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.itype == "" or args.imageid is None:
@@ -330,9 +337,10 @@ def launchimg(args):
 
 # Create snapshot from a particular Amazon instance
 @arg('--instance', help = 'Instance to snapshot',)
+@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snapshot(args, *foo):
-    AWSAKEY,AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    #AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     try:
         if args.instance == "" or args.instance is None:
             print 'You have to pass the name of the instance to snapshot using --instance="name"'
@@ -352,7 +360,7 @@ def snapshot(args, *foo):
 	    print str(i)[7:]
         print instance.tags['Name']
 	print "Creating snapshot..."
-	if instance.state == "running":
+	if instance.state == "running" and args.region != "us-east-1":
 	    host = instance.ip_address
 	    ssh = paramiko.SSHClient()
 	    sshkey = _getkeypem()
@@ -377,7 +385,7 @@ def snapshot(args, *foo):
 	            snapshot = conn.create_snapshot(str(i)[7:], name)
                     print "Snapshot %s created!" % snapshot
 	else:    
-	    print "Ovivo instance is stopped or IPs not available"
+	    print "Ovivo instance is stopped, IPs not available or Region is US-EAST-1"
 	    for i in volumes:
 	        snapshot = conn.create_snapshot(str(i)[7:], name)
                 print "Snapshot %s created!" % snapshot
@@ -385,14 +393,15 @@ def snapshot(args, *foo):
         print "Snapshot creation process finished..." 
 
 # Snapshot all instances on Amazon account
+@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snapall(args):
-    AWSAKEY,AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    #AWSAKEY,AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
     for i in reservations:
        instance = i.instances[0]
        sec_instance = instance.groups[0]
-       if sec_instance.id == VPCID_EUWEST and instance.id != DBMASTER_TEST  :
+       if sec_instance.id == VPCID_EUWEST or sec_instance == VPCID_USEAST and instance.id != DBMASTER_TEST  :
            param = instance.tags['Name']
            rotatesnap(param)
            snapshot(None, param)

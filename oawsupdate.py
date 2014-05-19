@@ -98,7 +98,7 @@ def _gethosts(*name):
     return tuple(array_inst)
 
 
-
+# Check for system software updates and asks for update it or not
 def oawsupdate():
     with hide('warnings'):
         print "-----------------------------------------"
