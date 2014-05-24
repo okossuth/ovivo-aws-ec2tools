@@ -113,7 +113,7 @@ def chgtype(args):
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None or args.itype is None:
         print "Instance name or Instance Type not given. You have to pass the name of the instance using --instance='name'"
-	print "or the instance type using --type='name'"
+	print "or the instance type using --itype='name'"
 	raise SystemExit(1)
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
     if len(reservations) == 0:
