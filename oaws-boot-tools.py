@@ -480,6 +480,11 @@ def startinfr(args):
     while val!= True:
         val = check_socket(CELERY_EIP, 80)
     
+    conn.disassociate_address(BACKEND_EIP, oupdates_id)
+    print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
+    conn.associate_address(backend_id, BACKEND_EIP)
+    print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
+    
     print "Stopping Ovivo Updates instance..."
     conn.stop_instances(instance_ids=[oupdates_id])
     reservations = conn.get_all_instances(filters={"tag:Name": "Ovivo Updates"});
@@ -489,10 +494,6 @@ def startinfr(args):
 	state = reservations[0].instances[0].state
     for i in reservations:
         instance = i.instances[0]
-    conn.disassociate_address(BACKEND_EIP, oupdates_id)
-    print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
-    conn.associate_address(backend_id, BACKEND_EIP)
-    print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
     print "Ovivo Updates instance stopped"
     print
     print "Ovivo AWS Ella Application online!"
