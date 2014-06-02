@@ -1,6 +1,10 @@
 #!/usr/bin/python
 
 import boto.ec2
+import subprocess
+import smtplib
+from email.mime.text import MIMEText
+import re
 
 REGION="eu-west-1"
 
@@ -42,25 +46,17 @@ def sendalert(id,event):
 def main():
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     stats = conn.get_all_instance_status()
-    x = 0
-    y = 0
-    for i in stats:
-         stat= stats[x]
-         reservations = conn.get_all_instances(instance_ids=[stat.id])
-         instance = reservations[0].instances[0]
-         if stat.events is not None:
-             print "instance: %s" % stat.id
-             print "Instance Name: %s" % instance.tags['Name']
-             print "Events pending: %s" % stat.events
-             print "State: %s" % stat.state_name
-	     sendalert(stat.id, stat.events)
-	     y = 1
-         else:
-             pass
-         x=x+1
-    if y == 1:
-        print "There are instances with scheduled events"
-    else:
-        print "There are no instances with scheduled events"
+    for stat in stats:
+	 if stat.events:
+	     for event in stat.events: 
+		 if  re.match('^\[Canceled\]',event.description) or re.match('^\[Completed\]',event.description):
+                     print "There are no instances with scheduled events"
+	         else:
+                     print "There are instances with scheduled events"
+		     print stat.id
+		     print event.description
+                     print "Events pending: %s" % stat.events
+                     print "State: %s" % stat.state_name
+	             sendalert(stat.id, stat.events)
 
 main()
