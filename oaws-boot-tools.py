@@ -16,6 +16,7 @@
     - Start Ovivo's Production Instances in order   (startinfr)
     - Change Instance Type                          (chgtype)
     - Reboot instance                               (reboot) 
+    - Terminate instance                            (terminate)
     
     """
 
@@ -157,6 +158,33 @@ def reboot(args):
     while val!= True:
         val = check_socket(instance.ip_address, 22)
     print "Instance %s is running" % args.instance	
+
+# Terminates a particular Amazon Instance
+@arg('--instance',help='Instance ID of the instance to terminate',)
+def terminate(args):
+    AWSAKEY, AWSSKEY = _getcreds()
+    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    if args.instance == "" or args.instance is None:
+        print "Instance name not given. You have to pass the name of the instance using --instance='name'"
+	raise SystemExit(1)
+    reservations = conn.get_all_instances(filters={"tag:Name": "%s" % args.instance})
+    if len(reservations) == 0:
+        print "Instance name is non existant"
+	raise SystemExit(1)
+    print "Terminating instance..."
+    for i in reservations:
+        instance = i.instances[0]
+    if instance.tags['Name'] == "%s" % args.instance :
+        conn.terminate_instances(instance_ids=[instance.id])
+    state = reservations[0].instances[0].state
+    while state !="terminated":
+        reservations = conn.get_all_instances(instance.id)
+	state = reservations[0].instances[0].state
+	
+    if state=="terminated":
+	print "Instance terminated, checks: %s" % reservations[0].instances[0].monitoring_state
+    else:
+        print "running"
 
 # Stops a particular Amazon Instance
 @arg('--instance',help='Instance ID of the instance to stop',)
@@ -502,7 +530,7 @@ def startinfr(args):
 
 if __name__ == '__main__':
     p = ArghParser()
-    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,chgtype,reboot,stopinfr,startinfr])
+    p.add_commands([start,stop,ec2list,getalleip,asseip,diseip,chgtype,reboot,stopinfr,startinfr,terminate])
     p.dispatch()
 
 
