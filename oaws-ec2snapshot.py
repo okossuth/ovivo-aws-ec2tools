@@ -371,7 +371,9 @@ def snapshot(args, *foo):
     else:
 	name = foo[0].encode('ascii')
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % name})
-
+    if len(reservations) == 0:
+        print "Name of Instance incorrect or Instance doesnt exist... Aborting!"
+	raise SystemExit(1)
     for i in reservations:
         instance = i.instances[0]
 	print instance.id
