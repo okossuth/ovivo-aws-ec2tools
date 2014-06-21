@@ -103,14 +103,23 @@ def _getawsaccid():
     return aws_accid[pos+2:-2]
 
 # Rotate Snapshots
-@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
-def rotatesnap(args):
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+def rotatesnap(args, *foo):
     temp = []
     temp_extra = []
     db_sem = 0
     #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
-    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    try:
+        if args.region == "" or args.region is None:
+	    region = args
+	    print region
+	else:
+	    region = args.region
+    except AttributeError:    
+	region = args
+	print "is %s" % region
+    conn = boto.ec2.connect_to_region(region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     snaps = conn.get_all_snapshots(filters = {"description": args})
     for i in snaps:
         print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
@@ -147,7 +156,7 @@ def rotatesnap(args):
 
 # List all snapshots in Amazon account or particular instance
 @arg('--instance', help = 'Instance to list snapshots',)
-@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snaplist(args, ):
     #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
@@ -216,7 +225,7 @@ def cpsnap(args):
 
 # Deletes all snapshots from an instance
 @arg('--instance', help = 'Instance name to delete snapshots from',)
-@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def delsnapall(args):
     #AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
@@ -239,7 +248,7 @@ def delsnapall(args):
 
 # Delete a particular snapshot 
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
-@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def delsnap(args):
     #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
@@ -337,10 +346,20 @@ def launchimg(args):
 
 # Create snapshot from a particular Amazon instance
 @arg('--instance', help = 'Instance to snapshot',)
-@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snapshot(args, *foo):
     #AWSAKEY,AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    try:
+        if args.region == "" or args.region is None:
+	    region = args
+	    print region
+	else:
+	    region = args.region
+    except AttributeError:    
+	region = args
+	print "is %s" % region
+    
+    conn = boto.ec2.connect_to_region(region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     try:
         if args.instance == "" or args.instance is None:
             print 'You have to pass the name of the instance to snapshot using --instance="name"'
@@ -352,6 +371,7 @@ def snapshot(args, *foo):
     else:
 	name = foo[0].encode('ascii')
     reservations = conn.get_all_instances(filters={"tag:Name": "%s" % name})
+
     for i in reservations:
         instance = i.instances[0]
 	print instance.id
@@ -360,7 +380,7 @@ def snapshot(args, *foo):
 	    print str(i)[7:]
         print instance.tags['Name']
 	print "Creating snapshot..."
-	if instance.state == "running" and args.region != "us-east-1":
+	if instance.state == "running" and region != "us-east-1":
 	    host = instance.ip_address
 	    ssh = paramiko.SSHClient()
 	    sshkey = _getkeypem()
@@ -393,9 +413,11 @@ def snapshot(args, *foo):
         print "Snapshot creation process finished..." 
 
 # Snapshot all instances on Amazon account
-@arg('--region', default = REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snapall(args):
     #AWSAKEY,AWSSKEY = _getcreds()
+    if args.region == "" or args.region is None:
+        args.region = REGION
     conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
     for i in reservations:
@@ -403,8 +425,8 @@ def snapall(args):
        sec_instance = instance.groups[0]
        if sec_instance.id == VPCID_EUWEST or sec_instance == VPCID_USEAST and instance.id != DBMASTER_TEST  :
            param = instance.tags['Name']
-           rotatesnap(param)
-           snapshot(None, param)
+           rotatesnap(args.region, param)
+           snapshot(args.region, param)
        else:
 	   pass
 
