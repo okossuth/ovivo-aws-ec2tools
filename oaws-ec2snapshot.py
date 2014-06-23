@@ -347,6 +347,7 @@ def launchimg(args):
 # Create snapshot from a particular Amazon instance
 @arg('--instance', help = 'Instance to snapshot',)
 @arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
+@arg('--dbrootonly', default='no', help = 'Snapshot only dbmaster root volume',)
 def snapshot(args, *foo):
     #AWSAKEY,AWSSKEY = _getcreds()
     try:
@@ -392,15 +393,19 @@ def snapshot(args, *foo):
 	    chan = ssh.get_transport().open_session()
 	    chan.get_pty()
 	    if name == "Production DB Master":
-		print "Freezing database filesystem..."
-	        chan.exec_command('sudo fsfreeze -f /var/lib/pgsql9 ; touch /tmp/kkk')
-	        for i in volumes:
-	            snapshot = conn.create_snapshot(str(i)[7:], name)
-                    print "Snapshot %s created!" % snapshot
-	        print "Thawing database filesystem..."
-	        chan = ssh.get_transport().open_session()
-	        chan.get_pty()
-	        chan.exec_command('sudo fsfreeze -u /var/lib/pgsql9 ; touch /tmp/roor')
+	        if args.dbrootonly == "no":
+		    print "Freezing database filesystem..."
+	            chan.exec_command('sudo fsfreeze -f /var/lib/pgsql9 ; touch /tmp/kkk')
+	            for i in volumes:
+	                snapshot = conn.create_snapshot(str(i)[7:], name)
+                        print "Snapshot %s created!" % snapshot
+	            print "Thawing database filesystem..."
+	            chan = ssh.get_transport().open_session()
+	            chan.get_pty()
+	            chan.exec_command('sudo fsfreeze -u /var/lib/pgsql9 ; touch /tmp/roor')
+	        else:
+		    snapshot = conn.create_snapshot(str(volumes[0])[7:], name)
+		    print "Snapshot %s created!" % snapshot
 	    else:    
 	        chan.exec_command('sudo sync')
 	        for i in volumes:
@@ -408,10 +413,19 @@ def snapshot(args, *foo):
                     print "Snapshot %s created!" % snapshot
 	else:    
 	    print "Ovivo instance is stopped, IPs not available or Region is US-EAST-1"
-	    for i in volumes:
-	        snapshot = conn.create_snapshot(str(i)[7:], name)
-                print "Snapshot %s created!" % snapshot
-            
+	    if name != "Production DB Master":
+	        for i in volumes:
+	            snapshot = conn.create_snapshot(str(i)[7:], name)
+                    print "Snapshot %s created!" % snapshot
+	    else:
+	        if name == "Production DB Master" and args.dbrootonly == "no":
+	            for i in volumes:
+	                snapshot = conn.create_snapshot(str(i)[7:], name)
+                        print "Snapshot %s created!" % snapshot
+		else:
+		    snapshot = conn.create_snapshot(str(volumes[0])[7:], name)
+		    print "Snapshot %s created!" % snapshot
+
         print "Snapshot creation process finished..." 
 
 # Snapshot all instances on Amazon account
