@@ -311,7 +311,7 @@ def diseip(args):
         iname = icod[0].instances[0].tags['Name']
 	if args.eip is None:
 	    args.eip = instance.ip_address	
-        conn.disassociate_address(args.eip,instance.id)
+        conn.disassociate_address(args.eip)
         print "EIP %s disassociated succesfully from Instance %s \n" % (args.eip, iname)
 
 # Stops the Ovivo Production Infrastructure automatically stopping each instance in order
@@ -358,7 +358,7 @@ def stopinfr(args):
     
     print "Connected to Ovivo Updates address %s on port %s \n" % (OUPDATES_DNS,"80")
 
-    conn.disassociate_address(BACKEND_EIP,backend_id)
+    conn.disassociate_address(BACKEND_EIP)
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Production Backend")
     conn.associate_address(oupdates_id, BACKEND_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
@@ -508,7 +508,7 @@ def startinfr(args):
     while val!= True:
         val = check_socket(CELERY_EIP, 80)
     
-    conn.disassociate_address(BACKEND_EIP, oupdates_id)
+    conn.disassociate_address(BACKEND_EIP)
     print "EIP %s disassociated succesfully from Instance %s \n" % (BACKEND_EIP, "Ovivo Updates")
     conn.associate_address(backend_id, BACKEND_EIP)
     print "EIP %s added succesfully to Instance %s \n" % (BACKEND_EIP, "Production Backend")
