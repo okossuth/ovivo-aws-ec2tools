@@ -108,7 +108,6 @@ def rotatesnap(args, *foo):
     temp = []
     temp_extra = []
     db_sem = 0
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     try:
         if args.region == "" or args.region is None:
@@ -158,14 +157,14 @@ def rotatesnap(args, *foo):
 @arg('--instance', help = 'Instance to list snapshots',)
 @arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snaplist(args, ):
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print color.BLUE + 'Listing all Ovivo snapshots ' + color.END
 	print '------------------------------ \n'
         snaps = conn.get_all_snapshots(owner=AWSACCID)
-        for i in snaps:
+	sets=sorted(snaps, key=lambda x: x.description)
+        for i in sets:
 	    print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
     else:
 	snaps = conn.get_all_snapshots(filters = {"description": args.instance})
@@ -178,7 +177,6 @@ def snaplist(args, ):
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to copy',)
 def cpsnap(args):
     temp = []
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGIONB,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
@@ -227,7 +225,6 @@ def cpsnap(args):
 @arg('--instance', help = 'Instance name to delete snapshots from',)
 @arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def delsnapall(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print 'You have to pass the instance name of the instance to delete snapshots from with --instance="instance_name"'
@@ -250,7 +247,6 @@ def delsnapall(args):
 @arg('--snapshotid', help = 'Snapshot ID of the snapshot to delete',)
 @arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def delsnap(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
@@ -267,7 +263,6 @@ def delsnap(args):
 # Delete a particular Amazon image
 @arg('--imageid', help = 'Image ID of the image to delete',)
 def delimage(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.imageid == "" or args.imageid is None:
@@ -282,7 +277,6 @@ def delimage(args):
 
 # List all images of Amazon account
 def imagelist(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     images = conn.get_all_images(owners=AWSACCID)
@@ -294,11 +288,11 @@ def imagelist(args):
     print
 
 # Create Amazon image from snapshot
+@arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 @arg('--snapshotid', help = 'Snapshot ID to create image from',)
 def create_image(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.snapshotid == "" or args.snapshotid is None:
         print 'You have to pass the snapshot ID used to create the image with --snapshotid="snapid"'
 	raise SystemExit(1)
@@ -311,7 +305,11 @@ def create_image(args):
 	block_map = BlockDeviceMapping()
 	block_map['/dev/sda1'] = ebs
 	try:
-            ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-71665e05',\
+	    if args.region == "eu-west-1":
+                ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-71665e05',\
+			root_device_name='/dev/sda1', block_device_map=block_map)
+	    else:
+                ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-b6aa75df',\
 			root_device_name='/dev/sda1', block_device_map=block_map)
 	    print "Image creation successful"
 	except EC2ResponseError:
@@ -321,7 +319,6 @@ def create_image(args):
 @arg('--imageid', help = 'Image ID to launch image from',)
 @arg('--itype'  , help = 'Type of Amazon instance to launch',)
 def launchimg(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     AWSACCID = _getawsaccid()
     conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.itype == "" or args.imageid is None:
@@ -349,7 +346,6 @@ def launchimg(args):
 @arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 @arg('--dbrootonly', default='no', help = 'Snapshot only dbmaster root volume',)
 def snapshot(args, *foo):
-    #AWSAKEY,AWSSKEY = _getcreds()
     try:
         if args.region == "" or args.region is None:
 	    region = args
@@ -431,7 +427,6 @@ def snapshot(args, *foo):
 # Snapshot all instances on Amazon account
 @arg('--region', default=REGION, help = 'Region to use, eu-west-1 or us-east-1',)
 def snapall(args):
-    #AWSAKEY,AWSSKEY = _getcreds()
     if args.region == "" or args.region is None:
         args.region = REGION
     conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
