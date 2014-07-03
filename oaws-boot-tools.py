@@ -26,7 +26,6 @@ import time
 from boto.exception import EC2ResponseError
 
 REGION="eu-west-1"
-#REGION="us-east-1"
 BACKEND_EIP="54.247.108.93"
 CELERY_EIP="46.137.79.20"
 MQREDIS_EIP="54.246.99.180"
@@ -90,9 +89,10 @@ def check_socket(address,port):
 	return False
 
 # Lists all the Instances in the Amazon account
-def ec2list():
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
+def ec2list(args):
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     reservations = conn.get_all_instances()
     print Color.BOLD + Color.BLUE + "Ovivo Amazon EC2 Instances" + Color.END
     print "--------------------------"
@@ -107,11 +107,12 @@ def ec2list():
     print
 
 # Change type of Amazon instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance',help='Instance to change type',)
 @arg('--itype',help='Type to choose',)
 def chgtype(args):
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None or args.itype is None:
         print "Instance name or Instance Type not given. You have to pass the name of the instance using --instance='name'"
 	print "or the instance type using --itype='name'"
@@ -137,10 +138,11 @@ def chgtype(args):
 	raise SystemExit(1)
 
 # Reboot a particular Amazon Instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance', help='Instance ID of the instance to reboot',)
 def reboot(args):
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instance='name'"
 	raise SystemExit(1)
@@ -160,10 +162,11 @@ def reboot(args):
     print "Instance %s is running" % args.instance	
 
 # Terminates a particular Amazon Instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance',help='Instance ID of the instance to terminate',)
 def terminate(args):
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instance='name'"
 	raise SystemExit(1)
@@ -187,10 +190,11 @@ def terminate(args):
         print "running"
 
 # Stops a particular Amazon Instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance',help='Instance ID of the instance to stop',)
 def stop(args):
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instance='name'"
 	raise SystemExit(1)
@@ -214,12 +218,13 @@ def stop(args):
         print "running"
 
 # Starts a particular Amazon Instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance',help='Instance ID of the instance to start',)
 @arg('--eip',help='EIP to associate',)
 def start(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instance='name'"
 	raise SystemExit(1)
@@ -247,10 +252,11 @@ def start(args):
     
 
 # List all Elastic IPs added to the AWS Account
-def getalleip():
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
+def getalleip(args):
     
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     eips = conn.get_all_addresses()
     for i in eips:
 	if i.instance_id is not None:
@@ -264,12 +270,13 @@ def getalleip():
             print "IP: %s ---> Not associated to any Instance " % (i)
 
 # Associate an elastic IP address to a particular Instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance',help='Instance ID of the instance to add EIP',)
 @arg('--eip',help='EIP to add',)
 def asseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instane='name'"
 	raise SystemExit(1)
@@ -291,12 +298,13 @@ def asseip(args):
 
 
 # Disassociate an elastic IP address from a particular Instance
+@arg('--region',default=REGION,help='Region to use e.g: eu-west-1, us-east-1',)
 @arg('--instance',help='Instance ID of the instance to disassociate EIP',)
 @arg('--eip',help='EIP to disassociate',)
 def diseip(args):
 
     AWSAKEY, AWSSKEY = _getcreds()
-    conn = boto.ec2.connect_to_region(REGION,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
+    conn = boto.ec2.connect_to_region(args.region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     if args.instance == "" or args.instance is None:
         print "Instance name not given. You have to pass the name of the instance using --instane='name'"
 	raise SystemExit(1)
