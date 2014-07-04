@@ -65,6 +65,7 @@ def host(server, cmd, user):
     sshkey = _getkeypem()
     privkey = paramiko.RSAKey.from_private_key_file (sshkey)
     ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(hostip,username=user,pkey=privkey)
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
     if 'nginx' in cmd:
@@ -130,9 +131,9 @@ def checksw():
     for i in data:
         if 'href="/pypi/uWSGI/' in i:
 	    if len(i) > 57:
-	        version = i[-12:-4]
+	        version = i[-11:-4]
 	    else:
-		version = i[-10:-4]
+		version = i[-9:-4]
     if not version in libversion:
         print (color.RED + "New version of uWSGI available: %s !!\n" + color.END)  % version
         message += "New version of uWSGI available: %s !!\n" % version
@@ -161,7 +162,7 @@ def checksw():
     data = page.split('\n')
     for i in data:
         if 'href="/pypi/uwsgitop/' in i:
-	    version = i[-9:-4]
+	    version = i[-7:-4]
     libversion = libversion[10:]
     if not version in libversion:
         print (color.RED + "New version of uWSGItop available: %s !!\n" + color.END)  % version
@@ -171,12 +172,11 @@ def checksw():
     
     print "Checking Nginx..."
     libversion = host(BACKEND, '/usr/local/nginx/sbin/nginx -v','oskar')
-    print "libversion is %s" % libversion
     br.open("http://nginx.org/en/download.html")
     page = br.response().read()
     data = page.split('\n')
 
-    array = data[14].split(' ')
+    array = data[15].split(' ')
     for i in array:
         if 'h4>Stable' in i:
 	    pos = array.index(i)    

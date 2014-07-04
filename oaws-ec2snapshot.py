@@ -385,6 +385,7 @@ def snapshot(args, *foo):
 	    sshkey = _getkeypem()
 	    privkey = paramiko.RSAKey.from_private_key_file (sshkey)
 	    ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+	    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 	    ssh.connect(host,username='oskar',pkey=privkey)
 	    chan = ssh.get_transport().open_session()
 	    chan.get_pty()
