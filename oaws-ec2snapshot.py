@@ -119,7 +119,7 @@ def rotatesnap(args, *foo):
 	region = args
 	print "is %s" % region
     conn = boto.ec2.connect_to_region(region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
-    snaps = conn.get_all_snapshots(filters = {"description": args})
+    snaps = conn.get_all_snapshots(filters = {"description": foo[0].encode('ascii')})
     for i in snaps:
         print "Snapshot: %s %s %sGB %s %s" % (i.id, i.description, i.volume_size, i.status, i.start_time)
 	if i.volume_size != 8:
@@ -356,6 +356,16 @@ def snapshot(args, *foo):
 	region = args
 	print "is %s" % region
     
+    try:
+        if args.dbrootonly == "" or args.dbrootonly is None:
+	    dbrootonly = "no"
+	    print dbrootonly
+	else:
+	    dbrootonly = args.dbrootonly
+    except AttributeError:    
+	dbrootonly = "no"
+	print "is %s" % dbrootonly
+    
     conn = boto.ec2.connect_to_region(region,aws_access_key_id=AWSAKEY,aws_secret_access_key=AWSSKEY)
     try:
         if args.instance == "" or args.instance is None:
@@ -384,13 +394,13 @@ def snapshot(args, *foo):
 	    ssh = paramiko.SSHClient()
 	    sshkey = _getkeypem()
 	    privkey = paramiko.RSAKey.from_private_key_file (sshkey)
-	    ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
+	    #ssh.load_host_keys(os.path.expanduser(os.path.join("~", ".ssh", "known_hosts")))
 	    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 	    ssh.connect(host,username='oskar',pkey=privkey)
 	    chan = ssh.get_transport().open_session()
 	    chan.get_pty()
 	    if name == "Production DB Master":
-	        if args.dbrootonly == "no":
+	        if dbrootonly == "no":
 		    print "Freezing database filesystem..."
 	            chan.exec_command('sudo fsfreeze -f /var/lib/pgsql9 ; touch /tmp/kkk')
 	            for i in volumes:
@@ -401,7 +411,7 @@ def snapshot(args, *foo):
 	            chan.get_pty()
 	            chan.exec_command('sudo fsfreeze -u /var/lib/pgsql9 ; touch /tmp/roor')
 	        else:
-		    snapshot = conn.create_snapshot(str(volumes[0])[7:], name)
+		    snapshot = conn.create_snapshot(str(volumes[1])[7:], name)
 		    print "Snapshot %s created!" % snapshot
 	    else:    
 	        chan.exec_command('sudo sync')
