@@ -22,6 +22,7 @@ from boto.exception import EC2ResponseError
 REGION="eu-west-1"
 REGIONB="us-east-1"
 VPCID_EUWEST="sg-cb6764bf"
+HVM_VPCID_EUWEST="sg-2b3bd444"
 VPCID_USEAST="sg-4a43ca22"
 AWSCREDS="./awscreds.txt"
 DBMASTER_TEST="i-803ea5cc"
@@ -445,7 +446,7 @@ def snapall(args):
     for i in reservations:
        instance = i.instances[0]
        sec_instance = instance.groups[0]
-       if sec_instance.id == VPCID_EUWEST or sec_instance == VPCID_USEAST and instance.id != DBMASTER_TEST  :
+       if sec_instance.id == HVM_VPCID_EUWEST or VPCID_EUWEST or sec_instance == VPCID_USEAST and instance.id != DBMASTER_TEST  :
            param = instance.tags['Name']
            rotatesnap(args.region, param)
            snapshot(args.region, param)
