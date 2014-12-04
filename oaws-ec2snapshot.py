@@ -300,23 +300,38 @@ def create_image(args):
     else:
 	namei = raw_input("Enter name of image: ")
 	descr = raw_input("Enter a description for image: ")
+	vtype = raw_input("Enter a virtualization type for image:[hvm|paravirtual] ")
         print "Creating image from snapshot %s ..." % args.snapshotid
 	ebs = EBSBlockDeviceType()
 	ebs.snapshot_id = args.snapshotid
 	block_map = BlockDeviceMapping()
 	block_map['/dev/sda1'] = ebs
+	print vtype
+	
 	try:
 	    if args.region == "eu-west-1":
-                ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-71665e05',\
-			root_device_name='/dev/sda1', block_device_map=block_map)
+		if vtype == "hvm":    
+                    #ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-71665e05',\
+	#		root_device_name='/dev/sda1', block_device_map=block_map, virtualization_type='hvm')
+                    ret = conn.register_image(name=namei,description=descr,architecture='x86_64',\
+			root_device_name='/dev/sda1', block_device_map=block_map, virtualization_type='hvm')
+		else:
+                    ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-71665e05',\
+			root_device_name='/dev/sda1', block_device_map=block_map, virtualization_type='paravirtual')
+
 	    else:
-                ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-b6aa75df',\
-			root_device_name='/dev/sda1', block_device_map=block_map)
+		if vtype == "hvm":    
+                    ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-b6aa75df',\
+			root_device_name='/dev/sda1', block_device_map=block_map, virtualization_type='hvm')
+		else:
+                    ret = conn.register_image(name=namei,description=descr,architecture='x86_64',kernel_id='aki-b6aa75df',\
+			root_device_name='/dev/sda1', block_device_map=block_map, virtualization_type='paravirtual')
+
 	    print "Image creation successful"
 	except EC2ResponseError:
 	    print "Image creation error"
 
-# Launch Amazon image from image
+# Launch Amazon image from image - only works with eu-west-1 currently
 @arg('--imageid', help = 'Image ID to launch image from',)
 @arg('--itype'  , help = 'Type of Amazon instance to launch',)
 def launchimg(args):
@@ -330,7 +345,11 @@ def launchimg(args):
 	raise SystemExit(1)
     else:
 	try:
-            ret=conn.run_instances(args.imageid,min_count=1,max_count=1,instance_type=args.itype, \
+	    if args.itype == "t2.micro":
+                ret=conn.run_instances(args.imageid,min_count=1,max_count=1,instance_type=args.itype, \
+		    security_group_ids=['sg-2b3bd444'], subnet_id='subnet-f74ddf9c')
+	    else:
+                ret=conn.run_instances(args.imageid,min_count=1,max_count=1,instance_type=args.itype, \
 		    security_groups=['default'],kernel_id='aki-71665e05')
 	    instance = ret.instances[0]
 	    status = instance.update()
